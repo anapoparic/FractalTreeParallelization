@@ -76,8 +76,6 @@ Performanse će biti merene kroz sledeće eksperimente:
 - **Vreme izvršavanja** - ukupno vreme potrebno za generisanje kompletnog fraktalnog stabla (od početka rekurzije do kraja)
 - **Speedup** - odnos vremena sekvencijalne i paralelne verzije u istom jeziku
 
-**Eksperimenti:**
-
 1. **Poređenje Python verzija:** Merenje razlike između Python sekvencijalne i paralelne implementacije
 2. **Poređenje Rust verzija:** Merenje razlike između Rust sekvencijalne i paralelne implementacije
 
@@ -85,7 +83,7 @@ Performanse će biti merene kroz sledeće eksperimente:
 
 - Različite dubine stabla (broj nivoa rekurzije)
 - Različiti uglovi grananja
-- Različiti faktori smanjenja (`resize`)
+- Različiti faktori smanjenja dužine grana
 
 Cilj je pokazati u kojim scenarijima paralelizacija daje najviše koristi i koje su razlike između process-based (Python) i thread-based (Rust) paralelizacije.
 
