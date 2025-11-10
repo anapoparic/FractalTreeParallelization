@@ -44,7 +44,6 @@ Cilj projekta je:
 - **Strategija paralelizacije:** Kontrolisano stvaranje procesa na prvim nivoima stabla
 - **Broj nivoa paralelizacije:** ograničen, jer bi dublja paralelizacija dovela do overhead-a
 - Svaki proces dobija svoj deo stabla za obradu
-- Sinhronizacija preko `multiprocessing.Queue` za prikupljanje rezultata
 
 ### Rust implementacija
 
