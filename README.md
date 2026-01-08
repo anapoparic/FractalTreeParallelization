@@ -58,11 +58,7 @@ Cilj projekta je:
 
 ### Vizualizacija
 
-Vizualizacija će biti urađena sa bibliotekom [Plotters](https://github.com/plotters-rs/plotters). Nakon što algoritam generiše strukturu stabla (svaki čvor sadrži svoju poziciju (x, y) i referencu na roditeljski čvor), Plotters biblioteka će:
-
-1. Učitati sve generisane čvorove stabla
-2. Za svaki čvor nacrtati liniju koja ga povezuje sa njegovim roditeljskim čvorom
-3. Prikazati čvorove kao male tačke ili krugove na njihovim pozicijama
+Vizualizacija će biti urađena sa bibliotekom [Plotters](https://github.com/plotters-rs/plotters). Nakon što algoritam generiše strukturu stabla (svaki čvor sadrži svoju poziciju (x, y) i referencu na roditeljski čvor).
 
 Finalna vizualizacija prikazuje kompletno fraktalno stablo sa svim granama i biće eksportovana u PNG format.
 
