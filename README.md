@@ -28,22 +28,19 @@ Cilj projekta je:
 
 **Sekvencijalna verzija:**
 
-- Klasična rekurzivna implementacija bez paralelizacije
-- Koristi matematičke formule za izračunavanje pozicija grana
-- Čuva strukturu stabla kao listu `Node` objekata
-- **Postupak generisanja:** Za svaki čvor sa pozicijom `(x, y)` i granom određene dužine algoritam:
-  1. Smanjuje dužinu grane množenjem sa određenim faktorom
-  2. Izračunava dva nova ugla
-  3. Koristeći trigonometrijske funkcije, izračunava pozicije potomaka
-  4. Rekurzivno poziva funkciju za levo i desno podstablo
-  5. Zaustavlja se kada dužina grane padne ispod postavljenog praga
+- Rekurzivna funkcija koja generiše grane stabla depth-first pristupom
+- Svaka grana se reprezentuje kao tuple (x1, y1, x2, y2, depth)
+- Algoritam koristi trigonometriju za izračunavanje krajnjih pozicija grana
+- Rezultati se grupišu po dubini (iteracijama) i čuvaju u JSON format
 
 **Paralelna verzija:**
 
-- **Biblioteka:** `multiprocessing`
-- **Strategija paralelizacije:** Kontrolisano stvaranje procesa na prvim nivoima stabla
+- **Biblioteka:** `multiprocessing.Pool`
+- **Strategija**: Sekvencijalno generisanje prvih parallel_depth nivoa, zatim paralelna obrada podstabala
+- **Optimizacija**: Auto-kalkulacija optimalnog parallel_depth parametra na osnovu veličine problema i broja CPU jezgara
+- Svaki worker proces nezavisno generiše kompletno podstablo koristeći isti rekurzivni algoritam
+- Rezultati iz svih procesa se čuvaju u JSON format
 - **Broj nivoa paralelizacije:** ograničen, jer bi dublja paralelizacija dovela do overhead-a
-- Svaki proces dobija svoj deo stabla za obradu
 
 ### Rust implementacija
 
