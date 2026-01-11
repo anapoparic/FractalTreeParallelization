@@ -46,12 +46,16 @@ Cilj projekta je:
 
 **Sekvencijalna verzija:**
 
-- Rekurzivna implementacija koja čuva čvorove stabla u `Vec<Node>` strukturi. Koristi matematičke formule za izračunavanje pozicija grana na osnovu uglova i dužina.
+- Rekurzivna funkcija koja generiše grane i čuva ih u `Vec<Branch>` strukturi.
+- Svaka grana se reprezentuje kao struct sa poljima (x1, y1, x2, y2, depth).
+- Koristi trigonometriju za izračunavanje krajnjih pozicija i depth-first pristup generisanju
 
 **Paralelna verzija:**
 
-- **Biblioteka:** [Rayon](https://github.com/rayon-rs/rayon) - omogućava data-parallelism kroz automatski thread pool
-- **Pristup:** Koristiće se `rayon::join()` koji automatski paralelizuje levo i desno podstablo. Za razliku od Python-ovog pristupa sa kontrolisanim spawnovanjem procesa, Rayon dinamički odlučuje kada koristiti paralelizaciju, smanjujući overhead.
+- **Biblioteka:** [std::thread](https://doc.rust-lang.org/std/thread/) - manuelna kontrola thread-ova
+- **Strategija:** Identična Python strategiji - sekvencijalno generisanje prvih parallel_depth nivoa, zatim paralelna obrada podstabala.
+- Optimizacija: Auto-kalkulacija optimalnog parallel_depth parametra na osnovu veličine problema i broja dostupnih thread-ova.
+- Svaki thread nezavisno generiše kompletno podstablo, rezultati se agregiraju kroz `Arc<Mutex<Vec<Branch>>>`
 
 ### Vizualizacija
 
@@ -87,7 +91,9 @@ Cilj je pokazati u kojim scenarijima paralelizacija daje najviše koristi i koje
 
 ## Reference
 
-- [Rayon - Data parallelism library](https://github.com/rayon-rs/rayon)
+- [std::thread](https://doc.rust-lang.org/std/thread/)
+- [Arc](https://doc.rust-lang.org/std/sync/struct.Arc.html)
+- [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html)
 - [Plotters - Rust plotting library](https://github.com/plotters-rs/plotters)
 - [Python multiprocessing documentation](https://docs.python.org/3/library/multiprocessing.html)
 
