@@ -4,8 +4,6 @@
 
 **Ocena** za koju se radi projektni zadatak: 10
 
-**Ana Poparić SV 74/2021**
-
 <p align="center"><img width=50% src="Fractal-Tree.jpg"></p>
 
 ## Opis problema
@@ -98,3 +96,4 @@ Cilj je pokazati u kojim scenarijima paralelizacija daje najviše koristi i koje
 - [Python multiprocessing documentation](https://docs.python.org/3/library/multiprocessing.html)
 
 ---
+**Ana Poparić SV 74/2021**
