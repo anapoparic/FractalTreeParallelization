@@ -59,9 +59,7 @@ Cilj projekta je:
 
 ### Vizualizacija
 
-Vizualizacija će biti urađena sa bibliotekom [Plotters](https://github.com/plotters-rs/plotters). Nakon što algoritam generiše strukturu stabla (svaki čvor sadrži svoju poziciju (x, y) i referencu na roditeljski čvor).
-
-Finalna vizualizacija prikazuje kompletno fraktalno stablo sa svim granama i biće eksportovana u PNG format.
+Vizualizacija će biti urađena sa bibliotekom [Plotters](https://github.com/plotters-rs/plotters). Algoritam generiše listu grana gde svaka grana sadrži koordinate početne i krajnje tačke (x1, y1, x2, y2) i dubinu u stablu. Finalna vizualizacija prikazuje kompletno fraktalno stablo crtanjem linija između tačaka svake grane i biće eksportovana u PNG format.
 
 ### Merenje performansi
 
