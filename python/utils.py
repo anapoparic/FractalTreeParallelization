@@ -43,7 +43,7 @@ def group_by_iterations(branches):
 def save_result(result, branches, output_file):
 
     print("Starting JSON serialization...")
-    serial_start = time.time()
+    serial_start = time.perf_counter()
 
     max_depth = max(b[4] for b in branches) if branches else 0
     iterations = group_by_iterations(branches)
@@ -55,6 +55,6 @@ def save_result(result, branches, output_file):
     with open(output_file, 'w') as f:
         json.dump(result, f, indent=2)
 
-    serial_time = time.time() - serial_start
+    serial_time = time.perf_counter() - serial_start
     print(f"JSON serialization finished in {serial_time:.6f}s")
     print(f"Saved to: {output_file}")

@@ -31,11 +31,11 @@ def run_sequential(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
     print_header("Sequential (Python)")
     print_params(trunk_length, ratio, branch_angle, min_length)
 
-    start_time = time.time()
+    start_time = time.perf_counter()
     branches = generate_fractal_tree(
         0, 0, trunk_length, math.pi / 2, ratio, branch_angle_radians, min_length
     )
-    execution_time = time.time() - start_time
+    execution_time = time.perf_counter() - start_time
 
     max_depth = max(b[4] for b in branches) if branches else 0
     print_result(execution_time, len(branches), max_depth)

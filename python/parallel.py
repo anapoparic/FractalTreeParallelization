@@ -1,22 +1,17 @@
 import math
 import time
-import struct
+import numpy as np
 from multiprocessing import Pool, cpu_count
 from utils import print_header, print_params, print_result, save_result
 
-# Each branch: 4 doubles (x1,y1,x2,y2) + 1 int (depth)
-BRANCH_FORMAT = 'ddddi'
-BRANCH_SIZE = struct.calcsize(BRANCH_FORMAT)
-
 
 def calculate_optimal_depth(trunk_length, ratio, min_length, num_cores):
-    """Calculate best parallel_depth to balance overhead vs parallelism."""
     if ratio >= 1 or ratio <= 0:
         return 2
 
     estimated_depth = abs(math.log(min_length / trunk_length) / math.log(ratio))
 
-    # Target: 2^parallel_depth = num_cores * 2 (slight oversubscription)
+    # Target: 2^parallel_depth = num_cores * 4 (oversubscription)
     target_tasks = num_cores * 4
     parallel_depth = max(1, int(math.log2(target_tasks)))
 
@@ -26,35 +21,34 @@ def calculate_optimal_depth(trunk_length, ratio, min_length, num_cores):
     return parallel_depth
 
 
-def generate_subtree_worker(args):
-    x, y, length, angle, ratio, branch_angle, min_length, depth= args
+def count_subtree_branches(length, ratio, min_length):
+    if length < min_length:
+        return 0
+    return 1 + 2 * count_subtree_branches(length * ratio, ratio, min_length)
 
-    parts = []
+
+def generate_subtree_worker(args):
+    x, y, length, angle, ratio, branch_angle, min_length, depth, subtree_size = args
+
+    buffer = np.empty((subtree_size, 5), dtype=np.float64)
+    idx = 0
 
     def recurse(x, y, length, angle, depth):
+        nonlocal idx
         if length < min_length:
             return
 
         end_x = x + length * math.cos(angle)
         end_y = y + length * math.sin(angle)
-        parts.append(struct.pack(BRANCH_FORMAT, x, y, end_x, end_y, depth))
+        buffer[idx] = (x, y, end_x, end_y, depth)
+        idx += 1
 
         new_len = length * ratio
         recurse(end_x, end_y, new_len, angle + branch_angle, depth + 1)
         recurse(end_x, end_y, new_len, angle - branch_angle, depth + 1)
 
     recurse(x, y, length, angle, depth)
-    return b''.join(parts)
-
-
-def unpack_branches(data):
-    """Unpack a bytes buffer into branch tuples."""
-    branches = []
-    offset = 0
-    while offset < len(data):
-        branches.append(struct.unpack_from(BRANCH_FORMAT, data, offset))
-        offset += BRANCH_SIZE
-    return branches
+    return buffer
 
 
 def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
@@ -73,12 +67,12 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
     print_params(trunk_length, ratio, branch_angle, min_length,
                  cores=num_processes, parallel_depth=parallel_depth, tasks=num_tasks)
 
-    start_time = time.time()
+    start_time = time.perf_counter()
 
     # Generate root
     root_end_x = 0 + trunk_length * math.cos(math.pi / 2)
     root_end_y = 0 + trunk_length * math.sin(math.pi / 2)
-    branches = [(0, 0, root_end_x, root_end_y, 0)]
+    upper_branches = [(0, 0, root_end_x, root_end_y, 0)]
 
     # Create tasks by traversing tree to parallel_depth
     task_args = []
@@ -91,7 +85,7 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
 
         end_x = x + length * math.cos(angle)
         end_y = y + length * math.sin(angle)
-        branches.append((x, y, end_x, end_y, depth))
+        upper_branches.append((x, y, end_x, end_y, depth))
 
         new_len = length * ratio
         create_tasks(end_x, end_y, new_len, angle + branch_angle_radians, depth + 1, target_depth)
@@ -101,18 +95,26 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
     create_tasks(root_end_x, root_end_y, new_len, math.pi / 2 + branch_angle_radians, 1, parallel_depth)
     create_tasks(root_end_x, root_end_y, new_len, math.pi / 2 - branch_angle_radians, 1, parallel_depth)
 
-    # Process in parallel — each worker returns bytes
+    # Pre-calculate subtree size (all tasks at same depth have same size)
+    subtree_size = count_subtree_branches(task_args[0][2], ratio, min_length)
+
+    # Add subtree_size to each task's args
+    task_args = [args + (subtree_size,) for args in task_args]
+
+    # Process in parallel — each worker returns a numpy array
     with Pool(processes=num_processes) as pool:
         results = pool.map(generate_subtree_worker, task_args, chunksize=1)
 
-    # Unpack bytes buffers into branch tuples
-    for data in results:
-        branches.extend(unpack_branches(data))
+    # Merge: convert upper branches to numpy + concatenate all arrays
+    upper_array = np.array(upper_branches, dtype=np.float64)
+    all_arrays = [upper_array] + results
+    branches = np.concatenate(all_arrays)
 
-    execution_time = time.time() - start_time
+    execution_time = time.perf_counter() - start_time
 
-    max_depth_actual = max(b[4] for b in branches) if branches else 0
-    print_result(execution_time, len(branches), max_depth_actual)
+    total_branches = len(branches)
+    max_depth_actual = int(branches[:, 4].max()) if total_branches > 0 else 0
+    print_result(execution_time, total_branches, max_depth_actual)
 
     result = {
         'parameters': {
@@ -131,7 +133,7 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
 
 
 if __name__ == "__main__":
-    
+
     run_parallel(
         trunk_length = 100.0,
         ratio = 0.67,
