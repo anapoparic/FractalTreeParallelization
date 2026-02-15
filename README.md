@@ -28,44 +28,38 @@ Cilj projekta je:
 
 **Sekvencijalna verzija:**
 
-- Klasična rekurzivna implementacija bez paralelizacije
-- Koristi matematičke formule za izračunavanje pozicija grana
-- Čuva strukturu stabla kao listu `Node` objekata
-- **Postupak generisanja:** Za svaki čvor sa pozicijom `(x, y)` i granom određene dužine algoritam:
-  1. Smanjuje dužinu grane množenjem sa određenim faktorom
-  2. Izračunava dva nova ugla
-  3. Koristeći trigonometrijske funkcije, izračunava pozicije potomaka
-  4. Rekurzivno poziva funkciju za levo i desno podstablo
-  5. Zaustavlja se kada dužina grane padne ispod postavljenog praga
+- Rekurzivna funkcija koja generiše grane stabla depth-first pristupom
+- Svaka grana se reprezentuje kao tuple (x1, y1, x2, y2, depth)
+- Algoritam koristi trigonometriju za izračunavanje krajnjih pozicija grana
+- Rezultati se grupišu po dubini (iteracijama) i čuvaju u JSON format
 
 **Paralelna verzija:**
 
-- **Biblioteka:** `multiprocessing`
-- **Strategija paralelizacije:** Kontrolisano stvaranje procesa na prvim nivoima stabla
+- **Biblioteka:** `multiprocessing.Pool`
+- **Strategija**: Sekvencijalno generisanje prvih parallel_depth nivoa, zatim paralelna obrada podstabala
+- **Optimizacija**: Auto-kalkulacija optimalnog parallel_depth parametra na osnovu veličine problema i broja CPU jezgara
+- Svaki worker proces nezavisno generiše kompletno podstablo koristeći isti rekurzivni algoritam
+- Rezultati iz svih procesa se čuvaju u JSON format
 - **Broj nivoa paralelizacije:** ograničen, jer bi dublja paralelizacija dovela do overhead-a
-- Svaki proces dobija svoj deo stabla za obradu
-- Sinhronizacija preko `multiprocessing.Queue` za prikupljanje rezultata
 
 ### Rust implementacija
 
 **Sekvencijalna verzija:**
 
-- Rekurzivna implementacija koja čuva čvorove stabla u `Vec<Node>` strukturi. Koristi matematičke formule za izračunavanje pozicija grana na osnovu uglova i dužina.
+- Rekurzivna funkcija koja generiše grane i čuva ih u `Vec<Branch>` strukturi.
+- Svaka grana se reprezentuje kao struct sa poljima (x1, y1, x2, y2, depth).
+- Koristi trigonometriju za izračunavanje krajnjih pozicija i depth-first pristup generisanju
 
 **Paralelna verzija:**
 
-- **Biblioteka:** [Rayon](https://github.com/rayon-rs/rayon) - omogućava data-parallelism kroz automatski thread pool
-- **Pristup:** Koristiće se `rayon::join()` koji automatski paralelizuje levo i desno podstablo. Za razliku od Python-ovog pristupa sa kontrolisanim spawnovanjem procesa, Rayon dinamički odlučuje kada koristiti paralelizaciju, smanjujući overhead.
+- **Biblioteka:** [std::thread](https://doc.rust-lang.org/std/thread/) - manuelna kontrola thread-ova
+- **Strategija:** Identična Python strategiji - sekvencijalno generisanje prvih parallel_depth nivoa, zatim paralelna obrada podstabala.
+- Optimizacija: Auto-kalkulacija optimalnog parallel_depth parametra na osnovu veličine problema i broja dostupnih thread-ova.
+- Svaki thread nezavisno generiše kompletno podstablo, rezultati se agregiraju kroz `Arc<Mutex<Vec<Branch>>>`
 
 ### Vizualizacija
 
-Vizualizacija će biti urađena sa bibliotekom [Plotters](https://github.com/plotters-rs/plotters). Nakon što algoritam generiše strukturu stabla (svaki čvor sadrži svoju poziciju (x, y) i referencu na roditeljski čvor), Plotters biblioteka će:
-
-1. Učitati sve generisane čvorove stabla
-2. Za svaki čvor nacrtati liniju koja ga povezuje sa njegovim roditeljskim čvorom
-3. Prikazati čvorove kao male tačke ili krugove na njihovim pozicijama
-
-Finalna vizualizacija prikazuje kompletno fraktalno stablo sa svim granama i biće eksportovana u PNG format.
+Vizualizacija će biti urađena sa bibliotekom [Plotters](https://github.com/plotters-rs/plotters). Algoritam generiše listu grana gde svaka grana sadrži koordinate početne i krajnje tačke (x1, y1, x2, y2) i dubinu u stablu. Finalna vizualizacija prikazuje kompletno fraktalno stablo crtanjem linija između tačaka svake grane i biće eksportovana u PNG format.
 
 ### Merenje performansi
 
@@ -95,10 +89,11 @@ Cilj je pokazati u kojim scenarijima paralelizacija daje najviše koristi i koje
 
 ## Reference
 
-- [Rayon - Data parallelism library](https://github.com/rayon-rs/rayon)
+- [std::thread](https://doc.rust-lang.org/std/thread/)
+- [Arc](https://doc.rust-lang.org/std/sync/struct.Arc.html)
+- [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html)
 - [Plotters - Rust plotting library](https://github.com/plotters-rs/plotters)
 - [Python multiprocessing documentation](https://docs.python.org/3/library/multiprocessing.html)
 
 ---
-
 **Ana Poparić SV 74/2021**
