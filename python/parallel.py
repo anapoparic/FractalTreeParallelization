@@ -28,7 +28,7 @@ def _build_tasks(x, y, length, angle, ratio, branch_angle_rad, min_length, depth
     return left + right
 
 
-def run_parallel_simple(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
+def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
                         min_length=0.01, num_processes=None, output_file="../data/parallel_simple_python.json"):
 
     if num_processes is None:

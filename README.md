@@ -31,53 +31,49 @@ Cilj projekta je:
 - Rekurzivna funkcija koja generiše grane stabla depth-first pristupom
 - Svaka grana se reprezentuje kao tuple (x1, y1, x2, y2, depth)
 - Algoritam koristi trigonometriju za izračunavanje krajnjih pozicija grana
-- Rezultati se grupišu po dubini (iteracijama) i čuvaju u JSON format
+- Rezultati se grupišu po dubini (iteracijama) i čuvaju u JSON formatu
 
 **Paralelna verzija:**
 
 - **Biblioteka:** `multiprocessing.Pool`
-- **Strategija**: Sekvencijalno generisanje prvih parallel_depth nivoa, zatim paralelna obrada podstabala
-- **Optimizacija**: Auto-kalkulacija optimalnog parallel_depth parametra na osnovu veličine problema i broja CPU jezgara
+- **Strategija**: Sekvencijalno generisanje prvih `split_depth` nivoa, zatim paralelna obrada podstabala kroz pool worker procese
+- **Optimizacija**: Auto-kalkulacija optimalnog `split_depth` parametra na osnovu broja CPU jezgara
 - Svaki worker proces nezavisno generiše kompletno podstablo koristeći isti rekurzivni algoritam
-- Rezultati iz svih procesa se čuvaju u JSON format
-- **Broj nivoa paralelizacije:** ograničen, jer bi dublja paralelizacija dovela do overhead-a
+- Rezultati iz svih procesa se kombinuju kroz `numpy.concatenate` za efikasnu IPC serijalizaciju
 
 ### Rust implementacija
 
 **Sekvencijalna verzija:**
 
-- Rekurzivna funkcija koja generiše grane i čuva ih u `Vec<Branch>` strukturi.
-- Svaka grana se reprezentuje kao struct sa poljima (x1, y1, x2, y2, depth).
+- Rekurzivna funkcija koja generiše grane i čuva ih u `Vec<Branch>` strukturi
+- Svaka grana se reprezentuje kao struct sa poljima (x1, y1, x2, y2, depth)
 - Koristi trigonometriju za izračunavanje krajnjih pozicija i depth-first pristup generisanju
+- Kapacitet vektora se unapred rezerviše koristeći `count_branches` funkciju (nula realokacija)
 
 **Paralelna verzija:**
 
-- **Biblioteka:** [std::thread](https://doc.rust-lang.org/std/thread/) - manuelna kontrola thread-ova
-- **Strategija:** Identična Python strategiji - sekvencijalno generisanje prvih parallel_depth nivoa, zatim paralelna obrada podstabala.
-- Optimizacija: Auto-kalkulacija optimalnog parallel_depth parametra na osnovu veličine problema i broja dostupnih thread-ova.
-- Svaki thread nezavisno generiše kompletno podstablo, rezultati se agregiraju kroz `Arc<Mutex<Vec<Branch>>>`
+- **Biblioteka:** [Rayon](https://github.com/rayon-rs/rayon) - data parallelism biblioteka
+- **Strategija:** Identična Python strategiji - sekvencijalno generisanje prvih `split_depth` nivoa, zatim paralelna obrada podstabala
+- **Optimizacija**: Auto-kalkulacija optimalnog `split_depth` parametra na osnovu broja dostupnih threadova
+- Svaki task nezavisno generiše kompletno podstablo sa pre-alokovanim `Vec<Branch>`; rezultati se čuvaju kao `Vec<Vec<Branch>>` bez potrebe za spajanjem
 
 ### Vizualizacija
 
-Vizualizacija će biti urađena sa bibliotekom [Plotters](https://github.com/plotters-rs/plotters). Algoritam generiše listu grana gde svaka grana sadrži koordinate početne i krajnje tačke (x1, y1, x2, y2) i dubinu u stablu. Finalna vizualizacija prikazuje kompletno fraktalno stablo crtanjem linija između tačaka svake grane i biće eksportovana u PNG format.
+Vizualizacija fraktalnog stabla urađena je Python `turtle` bibliotekom (`tree-visualization.py`). Grafovi performansi generišu se iz CSV rezultata eksperimenata.
 
 ### Merenje performansi
 
-Performanse će biti merene kroz sledeće eksperimente:
+Eksperimenti se pokreću kroz `scripts/run_all.py` koji za svaku konfiguraciju izvršava više ponavljanja i čuva rezultate u CSV format.
 
 **Metrika:**
 
 - **Vreme izvršavanja** - ukupno vreme potrebno za generisanje kompletnog fraktalnog stabla (od početka rekurzije do kraja)
 - **Speedup** - odnos vremena sekvencijalne i paralelne verzije u istom jeziku
 
-1. **Poređenje Python verzija:** Merenje razlike između Python sekvencijalne i paralelne implementacije
-2. **Poređenje Rust verzija:** Merenje razlike između Rust sekvencijalne i paralelne implementacije
+**Tipovi skaliranja:**
 
-**Varijabilni parametri:**
-
-- Različite dubine stabla (broj nivoa rekurzije)
-- Različiti uglovi grananja
-- Različiti faktori smanjenja dužine grana
+1. **Strong scaling** - isti problem, povećava se broj jezgara (1, 2, 4, 8)
+2. **Weak scaling** - problem raste proporcionalno sa brojem jezgara
 
 Cilj je pokazati u kojim scenarijima paralelizacija daje najviše koristi i koje su razlike između process-based (Python) i thread-based (Rust) paralelizacije.
 
@@ -89,11 +85,10 @@ Cilj je pokazati u kojim scenarijima paralelizacija daje najviše koristi i koje
 
 ## Reference
 
-- [std::thread](https://doc.rust-lang.org/std/thread/)
-- [Arc](https://doc.rust-lang.org/std/sync/struct.Arc.html)
-- [Mutex](https://doc.rust-lang.org/std/sync/struct.Mutex.html)
-- [Plotters - Rust plotting library](https://github.com/plotters-rs/plotters)
+- [Rayon - data parallelism library for Rust](https://github.com/rayon-rs/rayon)
 - [Python multiprocessing documentation](https://docs.python.org/3/library/multiprocessing.html)
+- [Python turtle graphics](https://docs.python.org/3/library/turtle.html)
 
 ---
+
 **Ana Poparić SV 74/2021**

@@ -7,15 +7,27 @@ use std::time::Instant;
 use std::error::Error;
 
 fn generate_fractal_tree(
-    x: f64, y: f64, length: f64, angle: f64,
-    ratio: f64, branch_angle: f64, min_length: f64, start_depth: usize,
+    x: f64, 
+    y: f64, 
+    length: f64, 
+    angle: f64,
+    ratio: f64, 
+    branch_angle: f64, 
+    min_length: f64, 
+    start_depth: usize,
 ) -> Vec<Branch> {
     let mut branches = Vec::with_capacity(count_branches(length, ratio, min_length));
 
     fn recurse(
         branches: &mut Vec<Branch>,
-        x: f64, y: f64, length: f64, angle: f64,
-        ratio: f64, branch_angle: f64, min_length: f64, depth: usize,
+        x: f64, 
+        y: f64, 
+        length: f64, 
+        angle: f64,
+        ratio: f64, 
+        branch_angle: f64, 
+        min_length: f64, 
+        depth: usize,
     ) {
         if length < min_length {
             return;
@@ -62,8 +74,8 @@ pub fn run_sequential(
             min_length,
         },
         execution_time,
-        total_branches: 0,
-        max_depth: 0,
+        total_branches: branches.len(),
+        max_depth: max_depth,
         iterations: Vec::new(),
     };
     // save_result(&mut result, &[branches], output_file)?;
@@ -71,7 +83,7 @@ pub fn run_sequential(
     Ok(result)
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     run_sequential(100.0, 0.67, 30.0, 0.01, "../data/sequential_rust.json")?;
     Ok(())
 }
