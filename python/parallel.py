@@ -9,12 +9,10 @@ from utils import print_header, print_params, print_result
 def _worker(args):
     x, y, length, angle, ratio, branch_angle_rad, min_length, depth = args
     branches = generate_fractal_tree(x, y, length, angle, ratio, branch_angle_rad, min_length, start_depth=depth)
-    # Convert to numpy for efficient IPC serialization (pickle)
     return np.array(branches, dtype=np.float64)
 
 
 def _build_tasks(x, y, length, angle, ratio, branch_angle_rad, min_length, depth, target_depth, upper_branches):
-    """Recursively build upper tree and collect subtree tasks at target_depth."""
     if depth >= target_depth:
         return [(x, y, length, angle, ratio, branch_angle_rad, min_length, depth)]
 
@@ -35,7 +33,6 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
         num_processes = cpu_count()
 
     branch_angle_rad = math.radians(branch_angle)
-    # Use 4x oversubscription for better load balancing across cores
     split_depth = max(1, math.ceil(math.log2(num_processes * 4)))
 
     print_header("Parallel Simple (Python)")
@@ -44,7 +41,7 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
 
     start_time = time.perf_counter()
 
-    # Build upper levels sequentially, collect subtree roots
+    # Build upper levels sequentially
     upper_branches = [(0, 0, 0 + trunk_length * math.cos(math.pi / 2),
                         0 + trunk_length * math.sin(math.pi / 2), 0)]
     root_end_x, root_end_y = upper_branches[0][2], upper_branches[0][3]
@@ -55,11 +52,9 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
     tasks += _build_tasks(root_end_x, root_end_y, new_len, math.pi / 2 - branch_angle_rad,
                           ratio, branch_angle_rad, min_length, 1, split_depth, upper_branches)
 
-    # Parallel execution
     with Pool(processes=num_processes) as pool:
         results = pool.map(_worker, tasks)
 
-    # Merge: convert upper branches to numpy + concatenate all arrays
     upper_array = np.array(upper_branches, dtype=np.float64)
     branches = np.concatenate([upper_array] + results)
 
@@ -84,7 +79,7 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
 
 if __name__ == "__main__":
 
-    run_parallel_simple(
+    run_parallel(
         trunk_length=100.0,
         ratio=0.67,
         branch_angle=30.0,

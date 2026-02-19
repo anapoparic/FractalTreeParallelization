@@ -1,5 +1,5 @@
 use fractal_tree::{
-    count_branches, print_header, print_params, print_extra_param, print_result,
+    count_branches, print_header, print_params, print_extra_param, print_result, save_result
     Branch, FractalResult, Parameters,
 };
 use rayon::prelude::*;
@@ -127,7 +127,6 @@ pub fn run_parallel(
 
     print_result(execution_time, total_branches, max_depth);
 
-    // To save: uncomment the three lines below and add `save_result` to imports
     // let mut all_groups = vec![upper_branches];
     // all_groups.extend(subtree_results);
     // save_result(&mut result, &all_groups, _output_file)?;
