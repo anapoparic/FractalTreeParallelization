@@ -22,11 +22,11 @@ def print_result(execution_time, num_branches, max_depth):
 
 
 def group_by_iterations(branches):
-    
-    if not branches:
+
+    if len(branches) == 0:
         return []
 
-    max_depth = max(b[4] for b in branches)
+    max_depth = int(max(b[4] for b in branches))
     iterations = []
 
     for d in range(max_depth + 1):
@@ -40,21 +40,23 @@ def group_by_iterations(branches):
     return iterations
 
 # Handle group_by_iterations + JSON serialization + file write
-def save_result(result, branches, output_file):
+def save_result(result, branches, filename):
+    root_dir = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'data', 'output'))
+    output_path = os.path.join(root_dir, filename)
 
     print("Starting JSON serialization...")
     serial_start = time.perf_counter()
 
-    max_depth = max(b[4] for b in branches) if branches else 0
+    max_depth = int(max(b[4] for b in branches)) if len(branches) > 0 else 0
     iterations = group_by_iterations(branches)
     result['iterations'] = iterations
     result['total_branches'] = len(branches)
     result['max_depth'] = max_depth
 
-    os.makedirs(os.path.dirname(output_file) if os.path.dirname(output_file) else '.', exist_ok=True)
-    with open(output_file, 'w') as f:
+    os.makedirs(root_dir, exist_ok=True)
+    with open(output_path, 'w') as f:
         json.dump(result, f, indent=2)
 
     serial_time = time.perf_counter() - serial_start
     print(f"JSON serialization finished in {serial_time:.6f}s")
-    print(f"Saved to: {output_file}")
+    print(f"Saved to: {output_path}")
