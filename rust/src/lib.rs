@@ -35,10 +35,86 @@ pub struct FractalResult {
     pub iterations: Vec<Iteration>,
 }
 
+pub fn generate_fractal_tree(
+    x: f64,
+    y: f64,
+    length: f64,
+    angle: f64,
+    ratio: f64,
+    branch_angle: f64,
+    min_length: f64,
+    start_depth: usize,
+) -> Vec<Branch> {
+    let mut branches = Vec::with_capacity(count_branches(length, ratio, min_length));
+
+    fn recurse(
+        branches: &mut Vec<Branch>,
+        x: f64,
+        y: f64,
+        length: f64,
+        angle: f64,
+        ratio: f64,
+        branch_angle: f64,
+        min_length: f64,
+        depth: usize,
+    ) {
+        if length < min_length {
+            return;
+        }
+        let end_x = x + length * angle.cos();
+        let end_y = y + length * angle.sin();
+        branches.push(Branch { x1: x, y1: y, x2: end_x, y2: end_y, depth });
+
+        let new_len = length * ratio;
+        recurse(branches, end_x, end_y, new_len, angle + branch_angle, ratio, branch_angle, min_length, depth + 1);
+        recurse(branches, end_x, end_y, new_len, angle - branch_angle, ratio, branch_angle, min_length, depth + 1);
+    }
+
+    recurse(&mut branches, x, y, length, angle, ratio, branch_angle, min_length, start_depth);
+    branches
+}
+
 /// Count how many branches a subtree will produce (without generating them).
 pub fn count_branches(length: f64, ratio: f64, min_length: f64) -> usize {
     if length < min_length { return 0; }
     1 + 2 * count_branches(length * ratio, ratio, min_length)
+}
+
+// ---------------------------------------------------------------------------
+// Parallel task splitting (shared by parallel.rs and experiment binaries)
+// ---------------------------------------------------------------------------
+
+pub struct TaskParams {
+    pub x: f64,
+    pub y: f64,
+    pub length: f64,
+    pub angle: f64,
+    pub depth: usize,
+}
+
+/// Expand the tree sequentially to `split_depth`, storing upper branches
+/// in `upper` and returning leaf parameters for parallel workers.
+pub fn collect_tasks(
+    upper: &mut Vec<Branch>,
+    x: f64,
+    y: f64,
+    length: f64,
+    angle: f64,
+    ratio: f64,
+    branch_angle: f64,
+    depth: usize,
+    split_depth: usize,
+) -> Vec<TaskParams> {
+    if depth >= split_depth {
+        return vec![TaskParams { x, y, length, angle, depth }];
+    }
+    let ex = x + length * angle.cos();
+    let ey = y + length * angle.sin();
+    upper.push(Branch { x1: x, y1: y, x2: ex, y2: ey, depth });
+    let cl = length * ratio;
+    let mut tasks = collect_tasks(upper, ex, ey, cl, angle + branch_angle, ratio, branch_angle, depth + 1, split_depth);
+    tasks.extend(collect_tasks(upper, ex, ey, cl, angle - branch_angle, ratio, branch_angle, depth + 1, split_depth));
+    tasks
 }
 
 pub fn print_header(name: &str) {
@@ -65,8 +141,11 @@ pub fn print_result(execution_time: f64, num_branches: usize, max_depth: usize) 
 pub fn save_result(
     result: &mut FractalResult,
     branch_groups: &[Vec<Branch>],
-    output_file: &str,
+    filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let root_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../data/output");
+    let output_path = format!("{}/{}", root_dir, filename);
+
     println!("Starting JSON serialization...");
     let serial_start = Instant::now();
 
@@ -81,15 +160,13 @@ pub fn save_result(
     result.max_depth = max_depth;
     result.iterations = iterations;
 
-    if let Some(parent) = std::path::Path::new(output_file).parent() {
-        fs::create_dir_all(parent)?;
-    }
+    fs::create_dir_all(root_dir)?;
     let json = serde_json::to_string_pretty(result)?;
-    fs::write(output_file, json)?;
+    fs::write(&output_path, json)?;
 
     let serial_time = serial_start.elapsed().as_secs_f64();
     println!("JSON serialization finished in {:.6}s", serial_time);
-    println!("Saved to: {}", output_file);
+    println!("Saved to: {}", output_path);
 
     Ok(())
 }
