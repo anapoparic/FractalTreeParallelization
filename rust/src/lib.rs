@@ -172,7 +172,7 @@ pub fn save_result(
 }
 
 
-pub fn group_by_iterations(branch_groups: &[Vec<Branch>]) -> Vec<Iteration> {
+pub fn group_by_depth(branch_groups: &[Vec<Branch>]) -> Vec<Iteration> {
     let max_depth = branch_groups.iter()
         .flat_map(|g| g.iter())
         .map(|b| b.depth)

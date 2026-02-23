@@ -1,6 +1,6 @@
 use fractal_tree::{
     generate_fractal_tree, collect_tasks,
-    print_header, print_params, print_extra_param, print_result, save_result,
+    print_header, print_params, print_extra_param, print_result,
     Branch, FractalResult, Parameters,
 };
 use rayon::prelude::*;
@@ -11,12 +11,11 @@ use std::error::Error;
 
 
 pub fn run_parallel(
-    trunk_length: f64, 
-    ratio: f64, 
-    branch_angle: f64, 
+    trunk_length: f64,
+    ratio: f64,
+    branch_angle: f64,
     min_length: f64,
-    num_threads: Option<usize>, 
-    output_file: &str,
+    num_threads: Option<usize>,
 ) -> Result<FractalResult, Box<dyn Error>> {
 
     let num_threads = num_threads.unwrap_or_else(|| {
@@ -58,7 +57,7 @@ pub fn run_parallel(
 
     print_result(execution_time, total_branches, max_depth);
 
-    let mut result = FractalResult {
+    let result = FractalResult {
         parameters: Parameters { trunk_length, ratio, branch_angle, min_length },
         execution_time,
         total_branches,
@@ -66,14 +65,10 @@ pub fn run_parallel(
         iterations: Vec::new(),
     };
 
-    let mut all_groups = vec![upper_branches];
-    all_groups.extend(subtree_results);
-    save_result(&mut result, &all_groups, output_file)?;
-
     Ok(result)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    run_parallel(100.0, 0.67, 30.0, 0.01, None, "parallel_rust.json")?;
+    run_parallel(100.0, 0.67, 30.0, 0.01, None)?;
     Ok(())
 }

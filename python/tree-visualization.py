@@ -3,7 +3,7 @@ import turtle as tu
 
 roo = tu.Turtle() 
 wn = tu.Screen() 
-wn.bgcolor("black") 
+wn.bgcolor("#0f0f14")
 wn.title("Fractal Tree Pattern")
 roo.left(90) 
 roo.speed(20)
@@ -14,7 +14,7 @@ def  draw(len, limit=10):
         return
     else:
         roo.pensize(2)
-        roo.pencolor("plum") 
+        roo.pencolor("#b4dc64")
         roo.forward(len) 
         roo.left(30) 
         draw(3*len/4) 

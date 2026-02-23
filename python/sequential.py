@@ -1,6 +1,6 @@
 import math
 import time
-from utils import print_header, print_params, print_result, save_result
+from utils import print_header, print_params, print_result
 
 # Returns list of (x1, y1, x2, y2, depth) tuples.
 def generate_fractal_tree(x, y, length, angle, ratio, branch_angle_radians, min_length, start_depth=0):
@@ -24,7 +24,7 @@ def generate_fractal_tree(x, y, length, angle, ratio, branch_angle_radians, min_
 
 
 def run_sequential(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
-                   min_length=1.0, output_file=None):
+                   min_length=1.0):
 
     branch_angle_radians = math.radians(branch_angle)
 
@@ -49,9 +49,6 @@ def run_sequential(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
         },
         'execution_time': execution_time,
     }
-    
-    if output_file is not None:
-        save_result(result, branches, output_file)
 
     return result
 
@@ -63,5 +60,4 @@ if __name__ == "__main__":
         ratio = 0.67,
         branch_angle = 30.0,
         min_length = 0.01,
-        output_file = "sequential_python.json"
     )

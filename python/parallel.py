@@ -3,7 +3,7 @@ import time
 import numpy as np
 from multiprocessing import Pool, cpu_count
 from sequential import generate_fractal_tree
-from utils import print_header, print_params, print_result, save_result
+from utils import print_header, print_params, print_result
 
 
 def _worker(args):
@@ -27,7 +27,7 @@ def _build_tasks(x, y, length, angle, ratio, branch_angle_rad, min_length, depth
 
 
 def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
-                        min_length=0.01, num_processes=None, output_file=None):
+                        min_length=0.01, num_processes=None):
 
     if num_processes is None:
         num_processes = cpu_count()
@@ -75,9 +75,6 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
         },
         'execution_time': execution_time,
     }
-    
-    if output_file is not None:
-        save_result(result, branches, output_file)
 
     return result
 
@@ -89,5 +86,4 @@ if __name__ == "__main__":
         ratio=0.67,
         branch_angle=30.0,
         min_length=0.01,
-        output_file="parallel_python.json"
     )
