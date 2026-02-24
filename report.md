@@ -180,24 +180,23 @@ Ideja je: ako imamo više procesora, možemo obraditi više podataka u približn
 ## 5. Eksperimenti jakog skaliranja (Strong Scaling)
 
 **Veličina problema:** 8,388,607 grana (= 2²³ − 1), dubina = 22, `min_length = 0.01`
-Broj merenja po konfiguraciji: **3** _(napomena: za statistički pouzdane rezultate preporučuje se min. 30 merenja)_
 
 ### 5.1 Python — Jako Skaliranje
 
 <img src="data/experiments/graphs/strong_scaling_python.png" width="700"/>
 
-| Jezgra |     Grane | Srednje vreme |   StdDev    | Ubrzanje  | Amdahl (f=0.801) | Outlieri | Merenja |
-| :----: | --------: | :-----------: | :---------: | :-------: | :--------------: | :------: | :-----: |
-|   1    | 8,388,607 |    4.798 s    |   0.095 s   |   1.000   |      1.000       |    0     |    3    |
-|   2    | 8,388,607 |    5.054 s    |   0.044 s   | **0.949** |      1.110       |    0     |    3    |
-|   4    | 8,388,607 |    3.826 s    | **0.482 s** |   1.254   |      1.175       |    0     |    3    |
-|   8    | 8,388,607 |    3.964 s    |   0.150 s   |   1.211   |      1.211       |    0     |    3    |
+| Jezgra |     Grane | Srednje vreme |   StdDev    | Ubrzanje  | Amdahl (f=0.801) | Outlieri |
+| :----: | --------: | :-----------: | :---------: | :-------: | :--------------: | :------: |
+|   1    | 8,388,607 |    4.798 s    |   0.095 s   |   1.000   |      1.000       |    0     |
+|   2    | 8,388,607 |    5.054 s    |   0.044 s   | **0.949** |      1.110       |    0     |
+|   4    | 8,388,607 |    3.826 s    | **0.482 s** |   1.254   |      1.175       |    0     |
+|   8    | 8,388,607 |    3.964 s    |   0.150 s   |   1.211   |      1.211       |    0     |
 
 **Analiza rezultata:**
 
 - **2 jezgra — program je sporiji nego sa 1 jezgrom (0.949x):** Dodavanje drugog jezgra nije pomoglo — program je čak bio sporiji. Razlog: Python na Windows platformi mora da pokrene potpuno novi proces za svako jezgro (kao da otvara novi program), prenese mu podatke, čeka da završi i skupi rezultate. Taj "administrativni" posao za 2 jezgra košta više nego što donosi ubrzanje.
 
-- **4 jezgra — malo ubrzanje, nestabilna merenja (1.254x):** Program je bio ~25% brži od sekvencijalnog, ali merenja su bila nestabilna. Jedno od 3 merenja trajalo je znatno duže od ostalih (verovatno zbog sporih sistemskih procesa u pozadini). Bez tog merenja, ubrzanje bi bilo ~1.35x.
+- **4 jezgra — malo ubrzanje, nestabilna merenja (1.254x):** Program je bio ~25% brži od sekvencijalnog, ali merenja su bila nestabilna. Jedno od merenja trajalo je znatno duže od ostalih (verovatno zbog sporih sistemskih procesa u pozadini). Bez tog merenja, ubrzanje bi bilo ~1.35x.
 
 - **8 jezgara — slabije od 4 jezgra (1.211x):** Više jezgara ovde nije donelo više ubrzanja. Procesor ima samo 4 fizička jezgra — jezgra 5–8 su virtuelna i dele resurse sa prvih 4. Uz to, više procesa znači i više "administrativnog" posla za koordinaciju.
 
@@ -207,18 +206,18 @@ Broj merenja po konfiguraciji: **3** _(napomena: za statistički pouzdane rezult
 
 <img src="data/experiments/graphs/strong_scaling_rust.png" width="700"/>
 
-| Jezgra |     Grane | Srednje vreme |    StdDev    | Ubrzanje | Amdahl (f=0.201) | Outlieri | Merenja |
-| :----: | --------: | :-----------: | :----------: | :------: | :--------------: | :------: | :-----: |
-|   1    | 8,388,607 |   0.2154 s    |   0.0064 s   |  1.000   |      1.000       |    0     |    3    |
-|   2    | 8,388,607 |   0.1362 s    |   0.0058 s   |  1.581   |      1.665       |    0     |    3    |
-|   4    | 8,388,607 |   0.1108 s    | **0.0408 s** |  1.943   |      2.495       |    0     |    3    |
-|   8    | 8,388,607 |   0.0648 s    |   0.0062 s   |  3.324   |      3.324       |    0     |    3    |
+| Jezgra |     Grane | Srednje vreme |    StdDev    | Ubrzanje | Amdahl (f=0.201) | Outlieri |
+| :----: | --------: | :-----------: | :----------: | :------: | :--------------: | :------: |
+|   1    | 8,388,607 |   0.2154 s    |   0.0064 s   |  1.000   |      1.000       |    0     |
+|   2    | 8,388,607 |   0.1362 s    |   0.0058 s   |  1.581   |      1.665       |    0     |
+|   4    | 8,388,607 |   0.1108 s    | **0.0408 s** |  1.943   |      2.495       |    1     |
+|   8    | 8,388,607 |   0.0648 s    |   0.0062 s   |  3.324   |      3.324       |    0     |
 
 **Analiza rezultata:**
 
 - **2 jezgra (1.581x):** Program je bio ~58% brži sa 2 jezgra, što je dobar rezultat. Za razliku od Python-a, Rust ne mora da pokreće nove procese — niti su već pripremljene i čekaju posao, pa nema "administrativnog" overhead-a. Malo zaostajanje za teorijskim maksimumom (1.665x) je normalno i posledica je koordinacije između niti.
 
-- **4 jezgra (1.943x):** Jedno od 3 merenja je bilo značajno sporije od ostalih (0.158s vs ~0.087s) — verovatno zbog privremenog usporavanja procesora usled pregrevanja. Ako se to merenje isključi, stvarno ubrzanje je ~2.48x, što se odlično slaže sa teorijskim (2.495x).
+- **4 jezgra (1.943x):** Jedno od merenja je bilo značajno sporije od ostalih (0.158s vs ~0.087s) — verovatno zbog privremenog usporavanja procesora usled pregrevanja. Ako se to merenje isključi, stvarno ubrzanje je ~2.48x, što se odlično slaže sa teorijskim (2.495x).
 
 - **8 jezgara (3.324x):** Program je 3.3× brži nego sa jednim jezgrom. Dalje ubrzanje je ograničeno činjenicom da procesor ima samo 4 fizička jezgra — jezgra 5–8 su virtuelna i dele hardver sa prvih 4, pa ne mogu da rade punom brzinom nezavisno.
 
@@ -247,12 +246,12 @@ Svako jezgro dobija tačno isti broj grana (16,383) — samo je ukupan posao ve�
 
 <img src="data/experiments/graphs/weak_scaling_python.png" width="700"/>
 
-| Jezgra |   Grane | Srednje vreme |  StdDev   | Skalirano ubrzanje | Gustafson (f=1.000) | Outlieri | Merenja |
-| :----: | ------: | :-----------: | :-------: | :----------------: | :-----------------: | :------: | :-----: |
-|   1    |  16,383 |   0.00937 s   | 0.00075 s |       1.000        |        1.000        |    0     |    3    |
-|   2    |  32,767 |   0.36124 s   | 0.03788 s |     **0.052**      |        1.000        |    0     |    3    |
-|   4    |  65,535 |   0.44206 s   | 0.00612 s |     **0.085**      |        1.000        |    0     |    3    |
-|   8    | 131,071 |   0.66210 s   | 0.01598 s |     **0.113**      |        1.000        |    0     |    3    |
+| Jezgra |   Grane | Srednje vreme |  StdDev   | Skalirano ubrzanje | Gustafson (f=1.000) | Outlieri |
+| :----: | ------: | :-----------: | :-------: | :----------------: | :-----------------: | :------: |
+|   1    |  16,383 |   0.00937 s   | 0.00075 s |       1.000        |        1.000        |    0     |
+|   2    |  32,767 |   0.36124 s   | 0.03788 s |     **0.052**      |        1.000        |    0     |
+|   4    |  65,535 |   0.44206 s   | 0.00612 s |     **0.085**      |        1.000        |    0     |
+|   8    | 131,071 |   0.66210 s   | 0.01598 s |     **0.113**      |        1.000        |    0     |
 
 **Analiza rezultata:**
 
@@ -266,12 +265,12 @@ Uzrok je isti kao i kod jakog skaliranja: pokretanje Python procesa na Windows-u
 
 <img src="data/experiments/graphs/weak_scaling_rust.png" width="700"/>
 
-| Jezgra |   Grane | Srednje vreme |   StdDev   | Skalirano ubrzanje | Gustafson (f=0.648) | Outlieri | Merenja |
-| :----: | ------: | :-----------: | :--------: | :----------------: | :-----------------: | :------: | :-----: |
-|   1    |  16,383 |  0.000600 s   | 0.000078 s |       1.000        |        1.000        |    0     |    3    |
-|   2    |  32,767 |  0.000717 s   | 0.000047 s |       1.674        |        1.352        |    0     |    3    |
-|   4    |  65,535 |  0.001173 s   | 0.000040 s |       2.046        |        2.055        |    0     |    3    |
-|   8    | 131,071 |  0.001387 s   | 0.000264 s |       3.462        |        3.462        |    0     |    3    |
+| Jezgra |   Grane | Srednje vreme |   StdDev   | Skalirano ubrzanje | Gustafson (f=0.648) | Outlieri |
+| :----: | ------: | :-----------: | :--------: | :----------------: | :-----------------: | :------: |
+|   1    |  16,383 |  0.000600 s   | 0.000078 s |       1.000        |        1.000        |    0     |
+|   2    |  32,767 |  0.000717 s   | 0.000047 s |       1.674        |        1.352        |    0     |
+|   4    |  65,535 |  0.001173 s   | 0.000040 s |       2.046        |        2.055        |    0     |
+|   8    | 131,071 |  0.001387 s   | 0.000264 s |       3.462        |        3.462        |    0     |
 
 **Analiza rezultata:**
 
