@@ -74,15 +74,11 @@ pub fn generate_fractal_tree(
     branches
 }
 
-/// Count how many branches a subtree will produce (without generating them).
+
 pub fn count_branches(length: f64, ratio: f64, min_length: f64) -> usize {
     if length < min_length { return 0; }
     1 + 2 * count_branches(length * ratio, ratio, min_length)
 }
-
-// ---------------------------------------------------------------------------
-// Parallel task splitting (shared by parallel.rs and experiment binaries)
-// ---------------------------------------------------------------------------
 
 pub struct TaskParams {
     pub x: f64,
@@ -92,8 +88,6 @@ pub struct TaskParams {
     pub depth: usize,
 }
 
-/// Expand the tree sequentially to `split_depth`, storing upper branches
-/// in `upper` and returning leaf parameters for parallel workers.
 pub fn collect_tasks(
     upper: &mut Vec<Branch>,
     x: f64,
@@ -155,7 +149,7 @@ pub fn save_result(
         .max()
         .unwrap_or(0);
     let total: usize = branch_groups.iter().map(|g| g.len()).sum();
-    let iterations = group_by_iterations(branch_groups);
+    let iterations = group_by_depth(branch_groups);
     result.total_branches = total;
     result.max_depth = max_depth;
     result.iterations = iterations;
