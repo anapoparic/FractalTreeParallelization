@@ -259,7 +259,7 @@ Python ne pokazuje nikakvo korisno slabo skaliranje. Sa 1 jezgrom (bez paraleliz
 
 Uzrok je isti kao i kod jakog skaliranja: pokretanje Python procesa na Windows-u košta ~300ms samo za "pripremu" (pokretanje novog interpretatora, učitavanje modula, prenos podataka). Kada sam računski posao traje manje od te pripreme, paralelizacija uvek gubi.
 
-**Zaključak:** Za mali i srednji obim posla, Python paralelizacija je kontraproduktivna — sekvencijalni program je višestruko brži.
+**Zaključak:** Za mali i srednji obim posla, Python paralelizacija je kontraproduktivna — sekvencijalni program je višestruko brži. Vrednost `f = 1.0` ne znači da je ceo algoritam sekvencijalan — isti Python kod u jakom skaliranju (8.4M grana, 4.8s računanja) daje `f = 0.801`. Razlika nastaje jer je Python-ov spawn overhead (~300ms) fiksan i ne zavisi od veličine problema: za veliki problem on je ~6% vremena pa se ubrzanje vidi, a za mali problem slabog skaliranja (16,383 grana, 0.009s računanja) on je ~3000% računanja pa ubrzanja praktično nema.
 
 ### 6.3 Rust — slabo skaliranje
 
