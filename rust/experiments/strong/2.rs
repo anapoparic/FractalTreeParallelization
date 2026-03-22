@@ -20,5 +20,5 @@ fn main() {
     let _results: Vec<Vec<Branch>> = pool.install(|| {
         tasks.par_iter().map(|t| generate_fractal_tree(t.x, t.y, t.length, t.angle, ratio, ba, MIN_LENGTH, t.depth)).collect()
     });
-    println!("Finish in {:.5} secounds(s)", start.elapsed().as_secs_f64());
+    println!("Finish in {:.5} seconds(s)", start.elapsed().as_secs_f64());
 }

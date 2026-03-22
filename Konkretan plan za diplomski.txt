@@ -1,0 +1,67 @@
+Konkretan plan za diplomski
+FAZA 1 — Eksperimenti za asimetricno stablo (obavezno)
+Ovo je direktna kopija strukture koju vec imas za simetricno. Treba kreirati:
+
+Python eksperimenti (python/experiments/asymmetric/strong/ i weak/)
+
+1, 2, 4, 8 jezgara — isti pattern kao python/experiments/strong/1.py
+Rust eksperimenti (rust/experiments/asymmetric/strong/ i weak/)
+
+1, 2, 4, 8 threadova — isti pattern kao rust/experiments/strong/1.rs
+Rezultat: grafovi speedupa za asimetricno stablo, Amdahl + Gustafson analiza.
+
+FAZA 2 — Poredjenje simetricno vs asimetricno (obavezno)
+Pokrenuti oba tipa stabla sa istim ukupnim brojem grana (podesiti parametre da su uporedivi) i pokazati:
+
+Da li simetricno ili asimetricno stablo bolje skalira?
+Zasto? (neujednacen workload kod asimetricnog)
+Ovo je nova analiza koje nemas u trenutnom report.md.
+
+FAZA 3 — Eksperimenti sa varijabilnim parametrima (obavezno po predlogu)
+Umesto da menis broj jezgara, drzati broj jezgara fiksan (npr. 4) i menjati:
+
+Parametar	Vrednosti za test
+Dubina stabla	8, 10, 12, 14, 16
+Ugao grananja	15°, 30°, 45°, 60°
+Faktor smanjenja	0.5, 0.6, 0.7, 0.8
+Pitanje na koje odgovaras: kako struktura stabla utice na efikasnost paralelizacije?
+
+FAZA 4 — Teorijski model (ovo je 5/5 deo)
+Izvesti formulu za broj grana na nivou d za asimetricno stablo:
+
+Za simetricno: N(d) = 2^d dok length * ratio^d >= min_length
+Za asimetricno: nije tako jednostavno jer leva i desna grana imaju razlicite ratio-e
+Konkretno: izvesti d_max_left i d_max_right — maksimalnu dubinu leve i desne strane — i iz toga izracunati ukupan broj grana analiticki. Zatim:
+
+Izracunati p = (paralelizabilni_deo) / (ukupno) teorijski
+Uporediti sa empirijski izmerenim speedupom
+Pokazati gde se teorija i praksa razilaze i zasto
+Ovo je originalni doprinos koji niko drugi nema.
+
+FAZA 5 — Instrumentacija work-stealinga (opciono, ali jako dobro)
+Dodati merenje load imbalance — koliko posla svaki worker stvarno uradi:
+
+Python: u _worker funkciji izmeriti broj grana koje je svaki worker generisao, sacuvati to uz vreme
+
+Rust: Rayon ne daje direktan pristup per-thread statistici, ali moze se koristiti std::sync::atomic::AtomicUsize counter po tasku
+
+Zatim pokazati grafom:
+
+Kod simetricnog stabla: svi workeri rade priblizno isto
+Kod asimetricnog stabla: Python ima veliki imbalance, Rust ga koriguje work-stealingom
+Redosled rada
+
+1. Faza 1 (eksperimenti)     — 2-3 dana
+2. Faza 2 (poredjenje)       — 1-2 dana (samo analiza i grafovi)
+3. Faza 3 (var. parametri)   — 2-3 dana
+4. Faza 4 (teorijski model)  — 3-5 dana (matematika + validacija)
+5. Faza 5 (instrumentacija)  — 2-3 dana (opciono)
+6. Pisanje rada               — paralelno sa svim fazama
+Faze 1-3 su minimum za solidan diplomski. Faza 4 je ono sto te odvaja od "dobrog" u "odlican". Faza 5 je bonus koji potkrepljuje teoriju empirijom.
+
+
+Za 5/5 na diplomskom (ne samo kod) — generate_graphs.py
+Trenutno grafovi prikazuju samo f iz podataka. Za diplomski treba dodati:
+
+Graf load imbalance-a: za svaki task izmeriti broj generisanih grana, prikazati distribuciju (box plot ili histogram) — simetricno vs asimetricno stablo, Python vs Rust
+Parametarska analiza: novi tip grafa gde x-osa nije broj jezgara vec left_ratio/right_ratio odnos, a y-osa speedup

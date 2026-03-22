@@ -10,5 +10,5 @@ fn main() {
         0.0, 0.0, 100.0, PI / 2.0, 0.67, branch_angle_rad, 0.5, 0,
     );
     let t = start.elapsed().as_secs_f64();
-    println!("Finish in {:.5} secounds(s)", t);
+    println!("Finish in {:.5} seconds(s)", t);
 }

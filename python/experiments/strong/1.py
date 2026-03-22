@@ -12,4 +12,4 @@ result = run_sequential(
     branch_angle=30.0,
     min_length=0.01,
 )
-print(f"Finish in {result['execution_time']:.5f} secounds(s)")
+print(f"Finish in {result['execution_time']:.5f} seconds(s)")

@@ -15,4 +15,4 @@ if __name__ == '__main__':
         min_length=0.335,
         num_processes=2,
     )
-    print(f"Finish in {result['execution_time']:.5f} secounds(s)")
+    print(f"Finish in {result['execution_time']:.5f} seconds(s)")

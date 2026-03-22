@@ -22,6 +22,14 @@ name = "parallel"
 path = "src/parallel.rs"
 
 [[bin]]
+name = "sequential_asymmetric"
+path = "src/sequential_asymmetric.rs"
+
+[[bin]]
+name = "parallel_asymmetric"
+path = "src/parallel_asymmetric.rs"
+
+[[bin]]
 name = "exp_strong_1"
 path = "experiments/strong/1.rs"
 
@@ -52,3 +60,35 @@ path = "experiments/weak/4.rs"
 [[bin]]
 name = "exp_weak_8"
 path = "experiments/weak/8.rs"
+
+[[bin]]
+name = "exp_asym_strong_1"
+path = "experiments/asymmetric/strong/1.rs"
+
+[[bin]]
+name = "exp_asym_strong_2"
+path = "experiments/asymmetric/strong/2.rs"
+
+[[bin]]
+name = "exp_asym_strong_4"
+path = "experiments/asymmetric/strong/4.rs"
+
+[[bin]]
+name = "exp_asym_strong_8"
+path = "experiments/asymmetric/strong/8.rs"
+
+[[bin]]
+name = "exp_asym_weak_1"
+path = "experiments/asymmetric/weak/1.rs"
+
+[[bin]]
+name = "exp_asym_weak_2"
+path = "experiments/asymmetric/weak/2.rs"
+
+[[bin]]
+name = "exp_asym_weak_4"
+path = "experiments/asymmetric/weak/4.rs"
+
+[[bin]]
+name = "exp_asym_weak_8"
+path = "experiments/asymmetric/weak/8.rs"

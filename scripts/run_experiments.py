@@ -35,12 +35,18 @@ OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'data', 'experiments')
 CORE_COUNTS = [1, 2, 4, 8]
 DEFAULT_RUNS = 3
 
-# Parameters used in each experiment (trunk_length=100, ratio=0.67, branch_angle=30)
-# Strong scaling: fixed problem size (min_length=0.01)
-# Weak scaling: min_length = 0.5 * 0.67^log2(cores) — one level deeper per 2x cores
+# min_length parameters per tree type and scaling strategy
+# Symmetric weak scaling: min_length = 0.5 * 0.67^log2(cores)
+# Asymmetric weak scaling: min_length = 0.5 * sqrt(0.67*0.57)^log2(cores) = 0.5 * 0.618^log2(cores)
 MIN_LENGTH_PARAMS = {
-    'strong': {1: 0.01,  2: 0.01,  4: 0.01,  8: 0.01},
-    'weak':   {1: 0.5,   2: 0.335, 4: 0.224, 8: 0.150},
+    'symmetric': {
+        'strong': {1: 0.01,  2: 0.01,  4: 0.01,  8: 0.01},
+        'weak':   {1: 0.5,   2: 0.335, 4: 0.224, 8: 0.150},
+    },
+    'asymmetric': {
+        'strong': {1: 0.01,  2: 0.01,  4: 0.01,  8: 0.01},
+        'weak':   {1: 0.5,   2: 0.309, 4: 0.191, 8: 0.118},
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -53,9 +59,18 @@ def count_branches(length, ratio, min_length):
     return 1 + 2 * count_branches(length * ratio, ratio, min_length)
 
 
+def count_branches_asymmetric(length, left_ratio, right_ratio, min_length):
+    """Count total branches in the asymmetric fractal tree."""
+    if length < min_length:
+        return 0
+    return (1
+            + count_branches_asymmetric(length * left_ratio,  left_ratio, right_ratio, min_length)
+            + count_branches_asymmetric(length * right_ratio, left_ratio, right_ratio, min_length))
+
+
 def parse_time(output):
-    """Parse 'Finish in X.XXXXX secounds(s)' from experiment output."""
-    match = re.search(r'Finish in ([\d.]+) secounds', output)
+    """Parse 'Finish in X.XXXXX seconds(s)' from experiment output."""
+    match = re.search(r'Finish in ([\d.]+) seconds', output)
     if match:
         return float(match.group(1))
     raise ValueError(f"Could not parse time from output:\n{output}")
@@ -75,9 +90,10 @@ def build_rust(verbose=True):
         print("  Build done.")
 
 
-def rust_bin_path(scaling, cores):
+def rust_bin_path(scaling, cores, tree='symmetric'):
     """Return path to the compiled Rust experiment binary."""
-    name = f'exp_{scaling}_{cores}'
+    prefix = 'exp_asym' if tree == 'asymmetric' else 'exp'
+    name = f'{prefix}_{scaling}_{cores}'
     if sys.platform == 'win32':
         name += '.exe'
     return os.path.join(RUST_BIN_DIR, name)
@@ -109,9 +125,9 @@ def format_duration(seconds):
 # ---------------------------------------------------------------------------
 # Main runner
 # ---------------------------------------------------------------------------
-def run_all_configs(language, scaling, num_runs):
-    """Run all core-count configurations for a language and scaling type."""
-    csv_path = os.path.join(OUTPUT_DIR, f'{language}_{scaling}.csv')
+def run_all_configs(language, scaling, num_runs, tree='symmetric'):
+    """Run all core-count configurations for a language, scaling type, and tree type."""
+    csv_path = os.path.join(OUTPUT_DIR, f'{language}_{tree}_{scaling}.csv')
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     rows = []
@@ -121,14 +137,18 @@ def run_all_configs(language, scaling, num_runs):
     overall_start = time.time()
 
     for config_idx, cores in enumerate(CORE_COUNTS):
-        min_length = MIN_LENGTH_PARAMS[scaling][cores]
-        nodes = count_branches(100.0, 0.67, min_length)
+        min_length = MIN_LENGTH_PARAMS[tree][scaling][cores]
+        if tree == 'asymmetric':
+            nodes = count_branches_asymmetric(100.0, 0.67, 0.57, min_length)
+        else:
+            nodes = count_branches(100.0, 0.67, min_length)
 
         if language == 'python':
-            script = os.path.join(PYTHON_EXP_DIR, scaling, f'{cores}.py')
+            subdir = os.path.join('asymmetric', scaling) if tree == 'asymmetric' else scaling
+            script = os.path.join(PYTHON_EXP_DIR, subdir, f'{cores}.py')
             cmd = [sys.executable, script]
         else:
-            cmd = [rust_bin_path(scaling, cores)]
+            cmd = [rust_bin_path(scaling, cores, tree)]
 
         print(f"\n  [{config_idx+1}/{total_configs}] {cores} core(s) | "
               f"{nodes:,} branches | {num_runs} runs:")
@@ -180,10 +200,13 @@ def main():
                         help='Language to test (default: all)')
     parser.add_argument('--scaling', choices=['strong', 'weak', 'all'], default='all',
                         help='Scaling type (default: all)')
+    parser.add_argument('--tree', choices=['symmetric', 'asymmetric', 'all'], default='all',
+                        help='Tree type (default: all)')
     args = parser.parse_args()
 
     languages = ['python', 'rust'] if args.lang == 'all' else [args.lang]
     scalings = ['strong', 'weak'] if args.scaling == 'all' else [args.scaling]
+    trees = ['symmetric', 'asymmetric'] if args.tree == 'all' else [args.tree]
 
     print("=" * 60)
     print("  EXPERIMENT RUNNER")
@@ -191,7 +214,8 @@ def main():
     print(f"  Runs per config: {args.runs}")
     print(f"  Languages: {', '.join(languages)}")
     print(f"  Scaling: {', '.join(scalings)}")
-    print(f"  Total experiments: {len(languages) * len(scalings) * len(CORE_COUNTS) * args.runs}")
+    print(f"  Tree types: {', '.join(trees)}")
+    print(f"  Total experiments: {len(languages) * len(scalings) * len(trees) * len(CORE_COUNTS) * args.runs}")
 
     # Build Rust binaries once if needed
     if 'rust' in languages:
@@ -199,12 +223,13 @@ def main():
 
     global_start = time.time()
 
-    for lang in languages:
-        for scaling in scalings:
-            print(f"\n{'=' * 60}")
-            print(f"  {lang.upper()} - {scaling.upper()} SCALING")
-            print(f"{'=' * 60}")
-            run_all_configs(lang, scaling, args.runs)
+    for tree in trees:
+        for lang in languages:
+            for scaling in scalings:
+                print(f"\n{'=' * 60}")
+                print(f"  {tree.upper()} - {lang.upper()} - {scaling.upper()} SCALING")
+                print(f"{'=' * 60}")
+                run_all_configs(lang, scaling, args.runs, tree)
 
     total = time.time() - global_start
     print(f"\n{'=' * 60}")
