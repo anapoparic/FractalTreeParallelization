@@ -2,9 +2,15 @@ import math
 import time
 import contextlib
 import io
+import csv
+import os
 
 from sequential_asymmetric import generate_fractal_tree_asymmetric
 from parallel_asymmetric import run_parallel_asymmetric
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+OUTPUT_DIR   = os.path.join(PROJECT_ROOT, 'data', 'experiments')
+CSV_PATH     = os.path.join(OUTPUT_DIR, 'python_asymmetric_variable_min_length.csv')
 
 # Phase 3 — variable min_length, asymmetric tree
 # Fixed: left_ratio=0.67, right_ratio=0.57, left_angle=35°, right_angle=25°, cores=4
@@ -47,6 +53,7 @@ if __name__ == '__main__':
     print(f"{'min_length':>12} {'branches':>12} {'seq (s)':>10} {'par (s)':>10} {'speedup':>9} {'efficiency':>12}")
     print("-" * 70)
 
+    rows = []
     for val in VALUES:
         seq_time, branch_count = _time_sequential(val)
         par_time               = _time_parallel(val)
@@ -54,3 +61,13 @@ if __name__ == '__main__':
         efficiency             = speedup / NUM_PROCESSES
 
         print(f"{val:>12} {branch_count:>12,} {seq_time:>10.5f} {par_time:>10.5f} {speedup:>8.3f}x {efficiency:>11.1%}")
+        rows.append({'min_length': val, 'branches': branch_count,
+                     'seq_time': f'{seq_time:.6f}', 'par_time': f'{par_time:.6f}',
+                     'speedup': f'{speedup:.4f}', 'efficiency': f'{efficiency:.4f}'})
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(CSV_PATH, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['min_length', 'branches', 'seq_time', 'par_time', 'speedup', 'efficiency'])
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"\nSaved: {CSV_PATH}")

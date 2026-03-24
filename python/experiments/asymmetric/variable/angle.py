@@ -2,9 +2,15 @@ import math
 import time
 import contextlib
 import io
+import csv
+import os
 
 from sequential_asymmetric import generate_fractal_tree_asymmetric
 from parallel_asymmetric import run_parallel_asymmetric
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+OUTPUT_DIR   = os.path.join(PROJECT_ROOT, 'data', 'experiments')
+CSV_PATH     = os.path.join(OUTPUT_DIR, 'python_asymmetric_variable_angle.csv')
 
 # Phase 3 — variable branch angles, asymmetric tree
 # Fixed: left_ratio=0.67, right_ratio=0.57, min_length=0.01, cores=4
@@ -54,6 +60,7 @@ if __name__ == '__main__':
     print(f"{'left °':>8} {'right °':>8} {'branches':>12} {'seq (s)':>10} {'par (s)':>10} {'speedup':>9} {'efficiency':>12}")
     print("-" * 74)
 
+    rows = []
     for left_angle in LEFT_ANGLES:
         right_angle                = round(left_angle * ANGLE_RATIO, 1)
         seq_time, branch_count     = _time_sequential(left_angle, right_angle)
@@ -63,3 +70,13 @@ if __name__ == '__main__':
 
         print(f"{left_angle:>8.1f} {right_angle:>8.1f} {branch_count:>12,} "
               f"{seq_time:>10.5f} {par_time:>10.5f} {speedup:>8.3f}x {efficiency:>11.1%}")
+        rows.append({'left_angle': left_angle, 'right_angle': right_angle, 'branches': branch_count,
+                     'seq_time': f'{seq_time:.6f}', 'par_time': f'{par_time:.6f}',
+                     'speedup': f'{speedup:.4f}', 'efficiency': f'{efficiency:.4f}'})
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(CSV_PATH, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['left_angle', 'right_angle', 'branches', 'seq_time', 'par_time', 'speedup', 'efficiency'])
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"\nSaved: {CSV_PATH}")

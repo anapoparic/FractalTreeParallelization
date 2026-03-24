@@ -375,10 +375,10 @@ def print_system_info():
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def process_experiment(language, scaling_type):
+def process_experiment(language, scaling_type, tree='symmetric'):
     """Process a single experiment (read CSV, compute stats, generate output)."""
     lang_lower = language.lower()
-    csv_path = os.path.join(DATA_DIR, f'{lang_lower}_{scaling_type}.csv')
+    csv_path = os.path.join(DATA_DIR, f'{lang_lower}_{tree}_{scaling_type}.csv')
 
     if not os.path.exists(csv_path):
         print(f"\n  SKIP: {csv_path} not found")
@@ -387,21 +387,23 @@ def process_experiment(language, scaling_type):
     data, nodes = read_csv(csv_path)
     stats = compute_stats(data, nodes)
 
+    label = f'{language} ({tree})'
+
     if scaling_type == 'strong':
         f = estimate_f_strong(stats)
-        t1 = print_strong_table(stats, f, language)
-        plot_strong_scaling(stats, f, language,
-                            os.path.join(GRAPH_DIR, f'strong_scaling_{lang_lower}.png'))
-        save_table_csv(stats, 'strong', t1, f, language,
-                       os.path.join(GRAPH_DIR, f'strong_scaling_{lang_lower}.csv'))
+        t1 = print_strong_table(stats, f, label)
+        plot_strong_scaling(stats, f, label,
+                            os.path.join(GRAPH_DIR, f'strong_scaling_{lang_lower}_{tree}.png'))
+        save_table_csv(stats, 'strong', t1, f, label,
+                       os.path.join(GRAPH_DIR, f'strong_scaling_{lang_lower}_{tree}.csv'))
     else:
         f = estimate_f_weak(stats)
-        print_weak_table(stats, f, language)
+        print_weak_table(stats, f, label)
         t1 = stats[0]['mean']
-        plot_weak_scaling(stats, f, language,
-                          os.path.join(GRAPH_DIR, f'weak_scaling_{lang_lower}.png'))
-        save_table_csv(stats, 'weak', t1, f, language,
-                       os.path.join(GRAPH_DIR, f'weak_scaling_{lang_lower}.csv'))
+        plot_weak_scaling(stats, f, label,
+                          os.path.join(GRAPH_DIR, f'weak_scaling_{lang_lower}_{tree}.png'))
+        save_table_csv(stats, 'weak', t1, f, label,
+                       os.path.join(GRAPH_DIR, f'weak_scaling_{lang_lower}_{tree}.csv'))
     return True
 
 
@@ -415,10 +417,11 @@ def main():
     print_system_info()
 
     found_any = False
-    for language in ['Python', 'Rust']:
-        for scaling in ['strong', 'weak']:
-            if process_experiment(language, scaling):
-                found_any = True
+    for tree in ['symmetric', 'asymmetric']:
+        for language in ['Python', 'Rust']:
+            for scaling in ['strong', 'weak']:
+                if process_experiment(language, scaling, tree):
+                    found_any = True
 
     if not found_any:
         print(f"\n  No experiment data found in: {DATA_DIR}")

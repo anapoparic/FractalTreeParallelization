@@ -33,7 +33,7 @@ OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'data', 'experiments')
 # Configuration
 # ---------------------------------------------------------------------------
 CORE_COUNTS = [1, 2, 4, 8]
-DEFAULT_RUNS = 3
+DEFAULT_RUNS = 10
 
 # min_length parameters per tree type and scaling strategy
 # Symmetric weak scaling: min_length = 0.5 * 0.67^log2(cores)
@@ -144,7 +144,7 @@ def run_all_configs(language, scaling, num_runs, tree='symmetric'):
             nodes = count_branches(100.0, 0.67, min_length)
 
         if language == 'python':
-            subdir = os.path.join('asymmetric', scaling) if tree == 'asymmetric' else scaling
+            subdir = os.path.join(tree, scaling)
             script = os.path.join(PYTHON_EXP_DIR, subdir, f'{cores}.py')
             cmd = [sys.executable, script]
         else:
