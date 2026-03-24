@@ -29,7 +29,7 @@ pub fn run_parallel(
     let branch_angle_rad = branch_angle.to_radians();
     let split_depth = (num_threads * 4).next_power_of_two().ilog2() as usize;
 
-    print_header("Parallel Simple (Rust)");
+    print_header("Parallel (Rust)");
     print_params(trunk_length, ratio, branch_angle, min_length);
     print_extra_param("threads", &num_threads);
     print_extra_param("split_depth", &split_depth);

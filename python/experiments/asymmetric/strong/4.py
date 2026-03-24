@@ -1,8 +1,3 @@
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
-
 from parallel_asymmetric import run_parallel_asymmetric
 
 # Asymmetric strong scaling: 4 processes, fixed problem size

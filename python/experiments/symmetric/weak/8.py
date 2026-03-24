@@ -1,8 +1,3 @@
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-
 from parallel import run_parallel
 
 # Weak scaling: 8 processes, min_length=0.150 (~256K branches, 8x work)

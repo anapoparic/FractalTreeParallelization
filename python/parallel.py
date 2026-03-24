@@ -35,22 +35,37 @@ def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
     branch_angle_rad = math.radians(branch_angle)
     split_depth = max(1, math.ceil(math.log2(num_processes * 4)))
 
-    print_header("Parallel Simple (Python)")
+    print_header("Parallel (Python)")
     print_params(trunk_length, ratio, branch_angle, min_length,
                  cores=num_processes, split_depth=split_depth)
 
     start_time = time.perf_counter()
 
     # Build upper levels sequentially
-    upper_branches = [(0, 0, 0 + trunk_length * math.cos(math.pi / 2),
-                        0 + trunk_length * math.sin(math.pi / 2), 0)]
-    root_end_x, root_end_y = upper_branches[0][2], upper_branches[0][3]
-    new_len = trunk_length * ratio
+    start_x, start_y = 0, 0
+    start_angle = math.pi / 2
+    end_x = start_x + trunk_length * math.cos(start_angle)
+    end_y = start_y + trunk_length * math.sin(start_angle)
+    start_depth = 0
 
-    tasks = _build_tasks(root_end_x, root_end_y, new_len, math.pi / 2 + branch_angle_rad,
-                         ratio, branch_angle_rad, min_length, 1, split_depth, upper_branches)
-    tasks += _build_tasks(root_end_x, root_end_y, new_len, math.pi / 2 - branch_angle_rad,
-                          ratio, branch_angle_rad, min_length, 1, split_depth, upper_branches)
+    upper_branches = [(start_x, start_y, end_x, end_y, start_depth)]
+    new_len = trunk_length * ratio
+    left_child_angle_rad = start_angle + branch_angle_rad
+    right_child_angle_rad = start_angle - branch_angle_rad
+
+    # left subtree
+    tasks = _build_tasks(end_x, end_y, 
+                         new_len, left_child_angle_rad,
+                         ratio, branch_angle_rad, 
+                         min_length, 1, 
+                         split_depth, upper_branches)
+    
+    # right subtree
+    tasks += _build_tasks(end_x, end_y, 
+                          new_len, right_child_angle_rad,
+                          ratio, branch_angle_rad, 
+                          min_length, 1, 
+                          split_depth, upper_branches)
 
     with Pool(processes=num_processes) as pool:
         results = pool.map(_worker, tasks)

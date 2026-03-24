@@ -1,8 +1,3 @@
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-
 from sequential import run_sequential
 
 # Weak scaling baseline: 1 process, min_length=0.5 (~32K branches)

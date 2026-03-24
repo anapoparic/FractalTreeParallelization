@@ -24,10 +24,11 @@ def _build_tasks(x, y, length, angle, left_ratio, right_ratio, left_angle_rad, r
     end_y = y + length * math.sin(angle)
     upper_branches.append((x, y, end_x, end_y, depth))
 
-    left = _build_tasks(end_x, end_y, length * left_ratio,  angle + left_angle_rad,
+    left = _build_tasks(end_x, end_y, length * left_ratio,  angle + left_angle_rad, 
                         left_ratio, right_ratio, left_angle_rad, right_angle_rad,
                         min_length, depth + 1, target_depth, upper_branches)
-    right = _build_tasks(end_x, end_y, length * right_ratio, angle - right_angle_rad,
+
+    right = _build_tasks(end_x, end_y, length * right_ratio, angle - right_angle_rad, 
                          left_ratio, right_ratio, left_angle_rad, right_angle_rad,
                          min_length, depth + 1, target_depth, upper_branches)
     return left + right
@@ -51,19 +52,30 @@ def run_parallel_asymmetric(trunk_length=100.0, left_ratio=0.67, right_ratio=0.5
 
     start_time = time.perf_counter()
 
-    # Root branch is always vertical (symmetric starting point)
-    upper_branches = [(0, 0,
-                       0 + trunk_length * math.cos(math.pi / 2),
-                       0 + trunk_length * math.sin(math.pi / 2), 0)]
-    root_end_x, root_end_y = upper_branches[0][2], upper_branches[0][3]
+    start_x, start_y = 0, 0
+    start_angle = math.pi / 2
+    end_x = start_x + trunk_length * math.cos(start_angle)
+    end_y = start_y + trunk_length * math.sin(start_angle)
+    start_depth = 0
 
-    tasks = _build_tasks(root_end_x, root_end_y, trunk_length * left_ratio,
-                         math.pi / 2 + left_angle_rad,
-                         left_ratio, right_ratio, left_angle_rad, right_angle_rad,
+    upper_branches = [(start_x, start_y, end_x, end_y, start_depth)]
+
+    left_child_len = trunk_length * left_ratio
+    right_child_len = trunk_length * right_ratio
+    left_child_angle_rad = start_angle + left_angle_rad
+    right_child_angle_rad = start_angle - right_angle_rad
+
+    # left subtree
+    tasks = _build_tasks(end_x, end_y, 
+                         left_child_len,left_child_angle_rad, 
+                         left_ratio, right_ratio, 
+                         left_angle_rad, right_angle_rad,
                          min_length, 1, split_depth, upper_branches)
-    tasks += _build_tasks(root_end_x, root_end_y, trunk_length * right_ratio,
-                          math.pi / 2 - right_angle_rad,
-                          left_ratio, right_ratio, left_angle_rad, right_angle_rad,
+    # right subtree
+    tasks += _build_tasks(end_x, end_y, 
+                          right_child_len, right_child_angle_rad,
+                          left_ratio, right_ratio, 
+                          left_angle_rad, right_angle_rad,
                           min_length, 1, split_depth, upper_branches)
 
     with Pool(processes=num_processes) as pool:
@@ -103,5 +115,5 @@ if __name__ == "__main__":
         right_ratio=0.57,
         left_angle=35.0,
         right_angle=25.0,
-        min_length=0.01,
+        min_length=0.001,
     )

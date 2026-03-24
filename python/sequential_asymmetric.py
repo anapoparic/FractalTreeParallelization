@@ -68,5 +68,5 @@ if __name__ == "__main__":
         right_ratio=0.57,
         left_angle=35.0,
         right_angle=25.0,
-        min_length=0.01,
+        min_length=0.001,
     )
