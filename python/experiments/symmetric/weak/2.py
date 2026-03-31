@@ -1,4 +1,4 @@
-from parallel import run_parallel
+from python.symmetric_parallel import run_parallel
 
 # Weak scaling: 2 processes, min_length=0.335 (~64K branches, 2x work)
 # min_length = 0.5 * 0.67^1 — one level deeper, doubles total branches

@@ -10,56 +10,52 @@ rayon = "1.10"
 plotters = "0.3"
 
 [[bin]]
-name = "visualize"
-path = "src/visualize.rs"
+name = "symmetric_sequential"
+path = "src/symmetric_sequential.rs"
 
 [[bin]]
-name = "sequential"
-path = "src/sequential.rs"
+name = "symmetric_parallel"
+path = "src/symmetric_parallel.rs"
 
 [[bin]]
-name = "parallel"
-path = "src/parallel.rs"
+name = "asymmetric_sequential"
+path = "src/asymmetric_sequential.rs"
 
 [[bin]]
-name = "sequential_asymmetric"
-path = "src/sequential_asymmetric.rs"
-
-[[bin]]
-name = "parallel_asymmetric"
-path = "src/parallel_asymmetric.rs"
+name = "asymmetric_parallel"
+path = "src/asymmetric_parallel.rs"
 
 [[bin]]
 name = "exp_strong_1"
-path = "experiments/strong/1.rs"
+path = "experiments/symmetric/strong/1.rs"
 
 [[bin]]
 name = "exp_strong_2"
-path = "experiments/strong/2.rs"
+path = "experiments/symmetric/strong/2.rs"
 
 [[bin]]
 name = "exp_strong_4"
-path = "experiments/strong/4.rs"
+path = "experiments/symmetric/strong/4.rs"
 
 [[bin]]
 name = "exp_strong_8"
-path = "experiments/strong/8.rs"
+path = "experiments/symmetric/strong/8.rs"
 
 [[bin]]
 name = "exp_weak_1"
-path = "experiments/weak/1.rs"
+path = "experiments/symmetric/weak/1.rs"
 
 [[bin]]
 name = "exp_weak_2"
-path = "experiments/weak/2.rs"
+path = "experiments/symmetric/weak/2.rs"
 
 [[bin]]
 name = "exp_weak_4"
-path = "experiments/weak/4.rs"
+path = "experiments/symmetric/weak/4.rs"
 
 [[bin]]
 name = "exp_weak_8"
-path = "experiments/weak/8.rs"
+path = "experiments/symmetric/weak/8.rs"
 
 [[bin]]
 name = "exp_asym_strong_1"
@@ -92,3 +88,7 @@ path = "experiments/asymmetric/weak/4.rs"
 [[bin]]
 name = "exp_asym_weak_8"
 path = "experiments/asymmetric/weak/8.rs"
+
+[[bin]]
+name = "exp_asym_variable_split_depth"
+path = "experiments/asymmetric/variable/split_depth.rs"

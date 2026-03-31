@@ -1,4 +1,4 @@
-from parallel import run_parallel
+from python.symmetric_parallel import run_parallel
 
 # Weak scaling: 8 processes, min_length=0.150 (~256K branches, 8x work)
 # min_length = 0.5 * 0.67^3 — three levels deeper, 8x total branches

@@ -83,6 +83,47 @@ Cilj je pokazati u kojim scenarijima paralelizacija daje najviše koristi i koje
 - Python verzija: 3.11
 - Rust verzija: 1.91
 
+## Pokretanje projekta
+
+```bash
+# 1. Klonirati repozitorijum
+git clone <repo_url>
+cd FractalTreeParallelization
+
+# 2. Build i pokretanje kontejnera
+docker compose up --build -d
+
+# 3.
+docker compose exec fractal-tree bash
+```
+
+Unutar kontejnera:
+
+```bash
+# Python — sekvencijalno i paralelno
+python python/symmetric_sequential.py
+python python/symmetric_parallel.py
+python python/asymmetric_sequential.py
+python python/asymmetric_parallel.py
+
+# Rust — sekvencijalno i paralelno
+./rust/target/release/symmetric_sequential
+./rust/target/release/symmetric_parallel
+./rust/target/release/asymmetric_sequential
+./rust/target/release/asymmetric_parallel
+
+# Pokretanje svih eksperimenata
+python scripts/run_experiments.py --runs 10
+
+# Generisanje grafova iz rezultata
+python scripts/generate_graphs.py
+
+# Teorijska analiza split_depth-a
+python scripts/theoretical_analysis.py
+```
+
+CSV i PNG outputi se automatski pojavljuju u `data/` folderu na host mašini.
+
 ## Reference
 
 - [Rayon - data parallelism library for Rust](https://github.com/rayon-rs/rayon)

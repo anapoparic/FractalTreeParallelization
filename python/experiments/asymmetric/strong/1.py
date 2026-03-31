@@ -1,4 +1,4 @@
-from sequential_asymmetric import run_sequential_asymmetric
+from python.asymmetric_sequential import run_sequential_asymmetric
 
 # Asymmetric strong scaling baseline: sequential, fixed problem size
 result = run_sequential_asymmetric(

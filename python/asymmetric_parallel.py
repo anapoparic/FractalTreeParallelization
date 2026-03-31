@@ -2,7 +2,7 @@ import math
 import time
 import numpy as np
 from multiprocessing import Pool, cpu_count
-from sequential_asymmetric import generate_fractal_tree_asymmetric
+from asymmetric_sequential import generate_fractal_tree_asymmetric
 from utils import print_header, print_params, print_result
 
 
@@ -36,14 +36,15 @@ def _build_tasks(x, y, length, angle, left_ratio, right_ratio, left_angle_rad, r
 
 def run_parallel_asymmetric(trunk_length=100.0, left_ratio=0.67, right_ratio=0.57,
                              left_angle=35.0, right_angle=25.0,
-                             min_length=0.01, num_processes=None):
+                             min_length=0.01, num_processes=None, split_depth=None):
 
     if num_processes is None:
         num_processes = cpu_count()
 
     left_angle_rad  = math.radians(left_angle)
     right_angle_rad = math.radians(right_angle)
-    split_depth = max(1, math.ceil(math.log2(num_processes * 4)))
+    if split_depth is None:
+        split_depth = (num_processes * 4).bit_length() - 1
 
     print_header("Parallel Asymmetric (Python)")
     print_params(trunk_length, left_ratio, left_angle, min_length,
@@ -115,5 +116,5 @@ if __name__ == "__main__":
         right_ratio=0.57,
         left_angle=35.0,
         right_angle=25.0,
-        min_length=0.001,
+        min_length=0.01,
     )

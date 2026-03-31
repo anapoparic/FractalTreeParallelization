@@ -31,7 +31,7 @@ from math import comb, log, floor, ceil, log2
 # Paths & parameters
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-OUTPUT_DIR   = os.path.join(PROJECT_ROOT, 'data', 'experiments', 'graphs')
+DATA_DIR     = os.path.join(PROJECT_ROOT, 'data')
 
 TRUNK_LENGTH = 100.0
 MIN_LENGTH   = 0.01
@@ -166,8 +166,10 @@ def print_table(rows, optimal_ideal, optimal_worst, current_d):
 
 
 def save_csv(rows, tree, n_processes):
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    path = os.path.join(OUTPUT_DIR, f'optimal_split_{tree}_{n_processes}cores.csv')
+    out_dir = os.path.join(DATA_DIR, tree, 'split_depth')
+    os.makedirs(out_dir, exist_ok=True)
+    filename = f'optimal_split_{tree}_{n_processes}cores.csv' if tree == 'symmetric' else f'theoretical_{n_processes}.csv'
+    path = os.path.join(out_dir, filename)
     fields = ['split_depth','n_seq','num_tasks','n_parallel',
               'max_task','mean_task','imbalance','t_ideal','t_worst']
     with open(path, 'w', newline='') as f:

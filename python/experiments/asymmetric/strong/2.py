@@ -1,4 +1,4 @@
-from parallel_asymmetric import run_parallel_asymmetric
+from python.asymmetric_parallel import run_parallel_asymmetric
 
 # Asymmetric strong scaling: 2 processes, fixed problem size
 if __name__ == '__main__':

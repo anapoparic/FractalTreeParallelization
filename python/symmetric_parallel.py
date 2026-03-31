@@ -2,7 +2,7 @@ import math
 import time
 import numpy as np
 from multiprocessing import Pool, cpu_count
-from sequential import generate_fractal_tree
+from symmetric_sequential import generate_fractal_tree
 from utils import print_header, print_params, print_result
 
 

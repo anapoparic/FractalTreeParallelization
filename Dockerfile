@@ -16,7 +16,7 @@ WORKDIR /app
 COPY . .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir numpy matplotlib && pip install --no-cache-dir -e python/
+RUN pip install --no-cache-dir numpy matplotlib
 
 # Build all Rust binaries in release mode
 RUN cd rust && cargo build --release

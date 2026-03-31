@@ -27,7 +27,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 PYTHON_EXP_DIR = os.path.join(PROJECT_ROOT, 'python', 'experiments')
 RUST_DIR = os.path.join(PROJECT_ROOT, 'rust')
 RUST_BIN_DIR = os.path.join(RUST_DIR, 'target', 'release')
-OUTPUT_DIR = os.path.join(PROJECT_ROOT, 'data', 'experiments')
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -127,8 +127,9 @@ def format_duration(seconds):
 # ---------------------------------------------------------------------------
 def run_all_configs(language, scaling, num_runs, tree='symmetric'):
     """Run all core-count configurations for a language, scaling type, and tree type."""
-    csv_path = os.path.join(OUTPUT_DIR, f'{language}_{tree}_{scaling}.csv')
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    output_dir = os.path.join(DATA_DIR, tree, scaling)
+    csv_path = os.path.join(output_dir, f'{language}.csv')
+    os.makedirs(output_dir, exist_ok=True)
 
     rows = []
     total_configs = len(CORE_COUNTS)
@@ -234,7 +235,7 @@ def main():
     total = time.time() - global_start
     print(f"\n{'=' * 60}")
     print(f"  ALL DONE in {format_duration(total)}")
-    print(f"  Results saved to: {OUTPUT_DIR}")
+    print(f"  Results saved to: {DATA_DIR}")
     print(f"{'=' * 60}")
 
 

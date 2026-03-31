@@ -1,4 +1,4 @@
-from sequential import run_sequential
+from python.symmetric_sequential import run_sequential
 
 # Weak scaling baseline: 1 process, min_length=0.5 (~32K branches)
 result = run_sequential(

@@ -1,4 +1,4 @@
-from parallel import run_parallel
+from python.symmetric_parallel import run_parallel
 
 # Strong scaling: 8 processes, fixed problem size
 if __name__ == '__main__':

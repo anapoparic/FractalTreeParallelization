@@ -1,4 +1,4 @@
-from sequential_asymmetric import run_sequential_asymmetric
+from python.asymmetric_sequential import run_sequential_asymmetric
 
 # Asymmetric weak scaling baseline: 1 process, min_length=0.5
 result = run_sequential_asymmetric(

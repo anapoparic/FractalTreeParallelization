@@ -1,4 +1,4 @@
-from sequential import run_sequential
+from python.symmetric_sequential import run_sequential
 
 # Strong scaling baseline: sequential, fixed problem size
 result = run_sequential(

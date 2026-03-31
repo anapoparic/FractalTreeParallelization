@@ -31,8 +31,7 @@ except ImportError:
 # Paths
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-DATA_DIR = os.path.join(PROJECT_ROOT, 'data', 'experiments')
-GRAPH_DIR = os.path.join(PROJECT_ROOT, 'data', 'experiments', 'graphs')
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 
 CORE_COUNTS = [1, 2, 4, 8]
 
@@ -378,7 +377,8 @@ def print_system_info():
 def process_experiment(language, scaling_type, tree='symmetric'):
     """Process a single experiment (read CSV, compute stats, generate output)."""
     lang_lower = language.lower()
-    csv_path = os.path.join(DATA_DIR, f'{lang_lower}_{tree}_{scaling_type}.csv')
+    csv_path = os.path.join(DATA_DIR, tree, scaling_type, f'{lang_lower}.csv')
+    graph_dir = os.path.join(DATA_DIR, tree, scaling_type)
 
     if not os.path.exists(csv_path):
         print(f"\n  SKIP: {csv_path} not found")
@@ -393,22 +393,21 @@ def process_experiment(language, scaling_type, tree='symmetric'):
         f = estimate_f_strong(stats)
         t1 = print_strong_table(stats, f, label)
         plot_strong_scaling(stats, f, label,
-                            os.path.join(GRAPH_DIR, f'strong_scaling_{lang_lower}_{tree}.png'))
+                            os.path.join(graph_dir, f'{lang_lower}.png'))
         save_table_csv(stats, 'strong', t1, f, label,
-                       os.path.join(GRAPH_DIR, f'strong_scaling_{lang_lower}_{tree}.csv'))
+                       os.path.join(graph_dir, f'{lang_lower}_stats.csv'))
     else:
         f = estimate_f_weak(stats)
         print_weak_table(stats, f, label)
         t1 = stats[0]['mean']
         plot_weak_scaling(stats, f, label,
-                          os.path.join(GRAPH_DIR, f'weak_scaling_{lang_lower}_{tree}.png'))
+                          os.path.join(graph_dir, f'{lang_lower}.png'))
         save_table_csv(stats, 'weak', t1, f, label,
-                       os.path.join(GRAPH_DIR, f'weak_scaling_{lang_lower}_{tree}.csv'))
+                       os.path.join(graph_dir, f'{lang_lower}_stats.csv'))
     return True
 
 
 def main():
-    os.makedirs(GRAPH_DIR, exist_ok=True)
 
     print("=" * 70)
     print("  SCALING EXPERIMENT REPORT GENERATOR")
@@ -430,7 +429,7 @@ def main():
 
     print(f"\n  {'=' * 70}")
     print(f"  DONE")
-    print(f"  Graphs and tables saved to: {GRAPH_DIR}")
+    print(f"  Graphs and tables saved to: {DATA_DIR}")
     print(f"  {'=' * 70}")
 
 

@@ -1,4 +1,4 @@
-from parallel_asymmetric import run_parallel_asymmetric
+from python.asymmetric_parallel import run_parallel_asymmetric
 
 # Asymmetric weak scaling: 8 processes, min_length=0.118
 # min_length = 0.5 * sqrt(0.67 * 0.57)^3 — three levels deeper, ~8x branches
