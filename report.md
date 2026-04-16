@@ -47,20 +47,20 @@
 
 | Biblioteka      | Verzija | Uloga                          |
 | --------------- | ------- | ------------------------------ |
-| Python          | 3.12.2  | Interpretator                  |
+| Python          | 3.11    | Interpretator                  |
 | multiprocessing | stdlib  | Paralelizacija (više procesa)  |
 | numpy           | 1.26.4  | Numeričke operacije, keš grana |
 | matplotlib      | 3.9.1   | Generisanje grafika            |
 
-> **Napomena — Windows multiprocessing:** Python `multiprocessing` na Windows platformi koristi metod **`spawn`** za kreiranje procesa (za razliku od `fork` na Linux/macOS). Kod `spawn`-a, svaki radni proces startuje potpuno novi Python interpretator, uvozi sve module i prima argumente serializacijom (pickle). Ovaj overhead je dominantan faktor koji negativno utiče na Python paralelne rezultate.
+> **Napomena — Windows multiprocessing:** Python `multiprocessing` na Windows platformi koristi metod **`spawn`** za kreiranje procesa (za razliku od `fork` na Linux/macOS). Kod `spawn`-a, svaki radni proces startuje potpuno novi Python interpretator, uvozi sve module i prima argumente serializacijom (pickle). Ovaj overhead (~300 ms po pokretanju) je dominantan faktor koji negativno utiče na Python paralelne rezultate.
 
 **Rust okruženje:**
 
 | Biblioteka/Alat    | Verzija | Uloga                                                                                   |
 | ------------------ | ------- | --------------------------------------------------------------------------------------- |
-| rustc              | 1.91.0  | Kompajler (2025-10-28)                                                                  |
+| rustc              | 1.91.0  | Kompajler                                                                               |
 | cargo              | 1.91.0  | Build sistem                                                                            |
-| rayon              | 1.10    | Rust automatski raspoređuje računarske zadatke na više CPU jezgara (work-stealing niti) |
+| rayon              | 1.10    | Automatski raspored zadataka na više CPU jezgara (work-stealing niti)                   |
 | serde / serde_json | 1.0     | Serijalizacija JSON izlaza                                                              |
 
 ---
@@ -68,9 +68,12 @@
 ## 2. Fiksni parametri svih eksperimenata
 
 ```
-trunk_length = 100.0
-ratio        = 0.67
-branch_angle = 30.0°
+trunk_length  = 100.0
+ratio         = 0.67          (simetrično stablo)
+left_ratio    = 0.67          (asimetrično stablo)
+right_ratio   = 0.57          (asimetrično stablo)
+branch_angle  = 30.0°
+Broj merenja po konfiguraciji = 10
 ```
 
 ---
@@ -83,56 +86,32 @@ branch_angle = 30.0°
 | ------------------------------- | -------------------------- | ------------------------------------------------------ |
 | Generisanje seed grana          | **Sekvencijalni**          | Inicijalna ekspanzija stabla do dubine raspodele posla |
 | Generisanje podstabala          | **Paralelni**              | Svako podstablo nezavisno, bez deljenih podataka       |
-| Skupljanje i spajanje rezultata | **Sekvencijalni**          | Concatenation resultujućih vektora                     |
+| Skupljanje i spajanje rezultata | **Sekvencijalni**          | Concatenation rezultujućih vektora                     |
 | Kreiranje Pool/ThreadPool       | **Sekvencijalni**          | Jednovremenski overhead pri pokretanju                 |
-| IPC / Pickle (samo Python)      | **Sekvencijalni overhead** | Serializacija argumenata i rezultata                   |
+| IPC / Pickle (samo Python)      | **Sekvencijalni overhead** | Serializacija argumenata i rezultata između procesa    |
 
-### 3.2 Procena sekvencijalne frakcije — Amdahlov zakon
+### 3.2 Procena sekvencijalne frakcije
 
-Svaki program ima deo koji može da se paralelizuje (više CPU jezgara ga ubrzava) i deo koji je uvek sekvencijalan (ne može da se paralelizuje).
+Sekvencijalna frakcija `f` procenjena je iz izmerenih podataka koristeći:
 
-Amdahlov zakon nam kaže koliko je maksimalno moguće ubrzanje programa u zavisnosti od sekvencijalnog dela.
+- **Amdahlov zakon** (jako skaliranje): `f = (1/S − 1/N) / (1 − 1/N)` gde je `S` izmereno ubrzanje na N jezgara
+- **Gustafsonov zakon** (slabo skaliranje): `f = (N − S_scaled) / (N − 1)` gde je `S_scaled = N · T(1) / T(N)`
 
-### Rezultati sa 8 jezgara
+#### Simetrično stablo — jako skaliranje (8.4M grana)
 
-| Jezgro / jezik | Mereno ubrzanje | Sekvencijalni deo | Paralelni deo |
-| -------------- | --------------- | ----------------- | ------------- |
-| Rust           | 3.324           | 20%               | 80%           |
-| Python         | 1.211           | 80%               | 20%           |
+| Jezik  | Izmereno ubrzanje (8j.) | Sekvencijalni deo `f` | Paralelni deo |
+| ------ | :---------------------: | :-------------------: | :-----------: |
+| Rust   |         4.083×          |        ~13.7%         |     ~86.3%    |
+| Python |         1.048×          |        ~94.8%         |      ~5.2%    |
 
-### Ključne činjenice
+#### Asimetrično stablo — jako skaliranje (919K grana)
 
-- Rust implementacija uspeva da većinu posla uradi paralelno → **80% može da ide istovremeno**.
-- Python implementacija ima veliki sekvencijalni deo (~80%) jer **overhead paralelizacije** (kreiranje procesa, komunikacija između procesa) usporava program.
-- Iako su algoritmi identični, **Python paralelizacija praktično ne koristi 8 jezgara kako bi mogla**.
+| Jezik  | Izmereno ubrzanje (8j.) | Sekvencijalni deo `f` | Paralelni deo |
+| ------ | :---------------------: | :-------------------: | :-----------: |
+| Rust   |         3.478×          |        ~18.6%         |     ~81.4%    |
+| Python |        **0.483×**       |        ~100%          |      ~0%      |
 
-> **Objašnjenje razlike:** Sekvencijalni deo algoritma je identičan za obe implementacije. Python paralelna implementacija ima efektivni sekvencijalni deo od ~80%, od čega je približno 60% posledica paralelizacionog overhead-a (Windows spawn, pickle, IPC).
-
-### 3.3 Procena sekvencijalnog dela — Gustafsonov zakon (pojednostavljeno)
-
-Gustafsonov zakon posmatra šta se dešava kada povećavamo količinu posla zajedno sa brojem jezgara (slabo skaliranje).  
-Ideja je: ako imamo više procesora, možemo obraditi više podataka u približno istom vremenu.
-
-### Rezultati sa 8 jezgara
-
-#### Rust
-
-- Efektivni sekvencijalni deo: ~65%
-- Paralelni deo: ~35%
-- Postoji skaliranje, ali nije idealno — deo posla i dalje ograničava performanse.
-
-#### Python
-
-- Overhead multiprocessing-a potpuno dominira.
-- Praktično nema skaliranja.
-- Dodavanje jezgara ne donosi realno ubrzanje.
-
-### Ključne činjenice
-
-- Rust pokazuje delimično skaliranje kada se povećava količina posla.
-- Python paralelna verzija ne skalira zbog velikog overhead-a (kreiranje procesa i komunikacija).
-- Skaliranje ne zavisi samo od algoritma, već i od načina implementacije i runtime okruženja.
-- U ovom testu, Python paralelizacija je ograničena sistemskim troškovima, a ne algoritmom.
+> **Ključna razlika Python vs Rust:** Sekvencijalni deo algoritma je praktično isti za obe implementacije. Python-ov visoki `f` nije posledica lošeg algoritma — isti sekvenijalni Python kod za 919K grana traje **0.585 s**, a Windows `spawn` overhead po pokretanju iznosi **~300 ms**. Kada se pokrene 8 procesa, taj overhead troši više vremena nego što paralelizacija štedi.
 
 ---
 
@@ -140,192 +119,396 @@ Ideja je: ako imamo više procesora, možemo obraditi više podataka u približn
 
 ### 4.1 Amdahlov zakon — Jako skaliranje
 
-(Ako je veličina problema fiksna, a povećavamo broj jezgara)
+#### Simetrično stablo (f\_Rust = 0.137, f\_Python = 0.948)
 
-| N (jezgra) | Idealno | Rust (f=0.201) | Python (f=0.801) |
-| :--------: | :-----: | :------------: | :--------------: |
-|     1      |  1.000  |     1.000      |      1.000       |
-|     2      |  2.000  |     1.665      |      1.110       |
-|     4      |  4.000  |     2.495      |      1.175       |
-|     8      |  8.000  |   **3.324**    |    **1.211**     |
-|     ∞      |    ∞    |   **4.975**    |    **1.248**     |
+| N (jezgra) | Idealno |  Rust  | Python |
+| :--------: | :-----: | :----: | :----: |
+|     1      |  1.000  |  1.000 |  1.000 |
+|     2      |  2.000  |  1.759 |  1.027 |
+|     4      |  4.000  |  2.835 |  1.041 |
+|     8      |  8.000  |  4.082 |  1.048 |
+|     ∞      |    ∞    | **7.30** | **1.055** |
 
-**Ključne činjenice:**
+#### Asimetrično stablo (f\_Rust = 0.186, f\_Python = 1.0)
 
-- Rust može teoretski dostići maksimalno ~5x ubrzanje.
-- Ograničenje je sekvencijalni deo (~20%).
-- Python je teorijski ograničen na ~1.25x ubrzanja,
-  bez obzira na broj jezgara.
-- To znači da paralelizacija u Python verziji praktično nema efekta.
+| N (jezgra) | Idealno |  Rust  | Python |
+| :--------: | :-----: | :----: | :----: |
+|     1      |  1.000  |  1.000 |  1.000 |
+|     2      |  2.000  |  1.686 |  1.000 |
+|     4      |  4.000  |  2.567 |  1.000 |
+|     8      |  8.000  |  3.473 |  1.000 |
+|     ∞      |    ∞    | **5.38** | **1.000** |
 
-### 4.2 Gustafonov zakon — Slabo skaliranje
+### 4.2 Gustafsonov zakon — Slabo skaliranje
 
-(Ako zajedno povećavamo količinu posla i broj jezgara)
+#### Simetrično stablo (f\_Rust = 0.734, f\_Python = 1.0)
 
-| N (jezgra) | Idealno | Rust (f=0.648) | Python (f=1.000) |
-| :--------: | :-----: | :------------: | :--------------: |
-|     1      |  1.000  |     1.000      |      1.000       |
-|     2      |  2.000  |     1.352      |      1.000       |
-|     4      |  4.000  |     2.055      |      1.000       |
-|     8      |  8.000  |   **3.462**    |    **1.000**     |
+| N (jezgra) | Idealno |  Rust  | Python |
+| :--------: | :-----: | :----: | :----: |
+|     1      |  1.000  |  1.000 |  1.000 |
+|     2      |  2.000  |  1.266 |  1.000 |
+|     4      |  4.000  |  1.798 |  1.000 |
+|     8      |  8.000  |  **2.862** | **1.000** |
 
-**Ključne činjenice:**
+#### Asimetrično stablo (f\_Rust = 0.960, f\_Python = 1.0)
 
-- Rust pokazuje realno skaliranje kako broj jezgara raste.
-- Python ne pokazuje skaliranje — rezultat ostaje praktično isti.
-- U Python slučaju, sistemski troškovi paralelizacije poništavaju dobit od više jezgara.
+| N (jezgra) | Idealno |  Rust  | Python |
+| :--------: | :-----: | :----: | :----: |
+|     1      |  1.000  |  1.000 |  1.000 |
+|     2      |  2.000  |  1.040 |  1.000 |
+|     4      |  4.000  |  1.120 |  1.000 |
+|     8      |  8.000  |  **1.280** | **1.000** |
 
----
-
-## 5. Eksperimenti jakog skaliranja (Strong Scaling)
-
-**Veličina problema:** 8,388,607 grana (= 2²³ − 1), dubina = 22, `min_length = 0.01`
-
-### 5.1 Python — Jako Skaliranje
-
-<img src="data/experiments/graphs/strong_scaling_python.png" width="700"/>
-
-| Jezgra |     Grane | Srednje vreme |   StdDev    | Ubrzanje  | Amdahl (f=0.801) | Outlieri |
-| :----: | --------: | :-----------: | :---------: | :-------: | :--------------: | :------: |
-|   1    | 8,388,607 |    4.798 s    |   0.095 s   |   1.000   |      1.000       |    0     |
-|   2    | 8,388,607 |    5.054 s    |   0.044 s   | **0.949** |      1.110       |    0     |
-|   4    | 8,388,607 |    3.826 s    | **0.482 s** |   1.254   |      1.175       |    1     |
-|   8    | 8,388,607 |    3.964 s    |   0.150 s   |   1.211   |      1.211       |    0     |
-
-**Analiza rezultata:**
-
-- **2 jezgra — program je sporiji nego sa 1 jezgrom (0.949x):** Dodavanje drugog jezgra nije pomoglo — program je čak bio sporiji. Razlog: Python na Windows platformi mora da pokrene potpuno novi proces za svako jezgro (kao da otvara novi program), prenese mu podatke, čeka da završi i skupi rezultate. Taj "administrativni" posao za 2 jezgra košta više nego što donosi ubrzanje.
-
-- **4 jezgra — malo ubrzanje, nestabilna merenja (1.254x):** Program je bio ~25% brži od sekvencijalnog, ali merenja su bila nestabilna. Jedno od merenja trajalo je znatno duže od ostalih (verovatno zbog sporih sistemskih procesa u pozadini). Bez tog merenja, ubrzanje bi bilo ~1.35x.
-
-- **8 jezgara — slabije od 4 jezgra (1.211x):** Više jezgara ovde nije donelo više ubrzanja. Procesor ima samo 4 fizička jezgra — jezgra 5–8 su virtuelna i dele resurse sa prvih 4. Uz to, više procesa znači i više "administrativnog" posla za koordinaciju.
-
-- **Zaključak:** Python paralelizacija za ovaj problem praktično ne funkcioniše. Maksimalno ubrzanje od ~1.25x znači da je program jedva brži bez obzira na broj jezgara. Uzrok nije loš algoritam, već fundamentalni overhead Python-ovog načina pokretanja paralelnih procesa na Windows platformi.
-
-### 5.2 Rust — Jako Skaliranje
-
-<img src="data/experiments/graphs/strong_scaling_rust.png" width="700"/>
-
-| Jezgra |     Grane | Srednje vreme |    StdDev    | Ubrzanje | Amdahl (f=0.201) | Outlieri |
-| :----: | --------: | :-----------: | :----------: | :------: | :--------------: | :------: |
-|   1    | 8,388,607 |   0.2154 s    |   0.0064 s   |  1.000   |      1.000       |    0     |
-|   2    | 8,388,607 |   0.1362 s    |   0.0058 s   |  1.581   |      1.665       |    0     |
-|   4    | 8,388,607 |   0.1108 s    | **0.0408 s** |  1.943   |      2.495       |    1     |
-|   8    | 8,388,607 |   0.0648 s    |   0.0062 s   |  3.324   |      3.324       |    0     |
-
-**Analiza rezultata:**
-
-- **2 jezgra (1.581x):** Program je bio ~58% brži sa 2 jezgra, što je dobar rezultat. Za razliku od Python-a, Rust ne mora da pokreće nove procese — niti su već pripremljene i čekaju posao, pa nema "administrativnog" overhead-a. Malo zaostajanje za teorijskim maksimumom (1.665x) je normalno i posledica je koordinacije između niti.
-
-- **4 jezgra (1.943x):** Jedno od merenja je bilo značajno sporije od ostalih (0.158s vs ~0.087s) — verovatno zbog privremenog usporavanja procesora usled pregrevanja. Ako se to merenje isključi, stvarno ubrzanje je ~2.48x, što se odlično slaže sa teorijskim (2.495x).
-
-- **8 jezgara (3.324x):** Program je 3.3× brži nego sa jednim jezgrom. Dalje ubrzanje je ograničeno činjenicom da procesor ima samo 4 fizička jezgra — jezgra 5–8 su virtuelna i dele hardver sa prvih 4, pa ne mogu da rade punom brzinom nezavisno.
-
-- **Zaključak:** Rust paralelizacija radi dobro i donosi stvarno ubrzanje sa više jezgara. Ograničenje nije u programu, već u hardveru — laptop ima samo 4 fizička jezgra, što postavlja prirodnu granicu ubrzanja.
+> **Ključna razlika simetrično vs asimetrično (Rust):** Gustafsonov `f` za Rust skok sa 0.734 (simetrično) na 0.960 (asimetrično). Uzrok je **neuravnoteženost posla (load imbalance)** — desna grana asimetričnog stabla ima faktor 0.57 naspram 0.67 leve, pa podstabla desno imaju manje grana. Jedan radnik brzo završi sa manjim podstablom i čeka dok drugi radi veće. Taj gubitak vremena u čekanju se ponaša kao sekvencijalni deo.
 
 ---
 
-## 6. Eksperimenti slabog skaliranja (Weak Scaling)
+## 5. Analiza dubine raspodele posla (Split Depth)
+
+### 5.1 Definicija i heuristika
+
+Paralelna implementacija najpre sekvencijalno gradi gornje nivoe stabla do dubine `split_depth`, a zatim svako podstablo na toj dubini predaje kao nezavisan zadatak radnom procesu/niti. Korišćena heuristika je:
+
+```
+split_depth = max(1, ceil(log2(N * 4)))
+```
+
+| N (jezgra) | split_depth (heuristika) |
+| :--------: | :----------------------: |
+|     1      |            3             |
+|     2      |            3             |
+|     4      |            4             |
+|     8      |            5             |
+
+Pitanje: **da li je ova heuristika optimalna?**
+
+### 5.2 Model troška
+
+Za datu `split_depth = d` i broj jezgara `N`:
+
+- `N_seq = 2^d − 1` (grane izračunate sekvencijalno)
+- `N_parallel = N_total − N_seq` (grane u podstablima)
+- `T_ideal = N_seq + ⌈N_parallel / N⌉` — savršena raspodela posla
+- `T_worst = N_seq + max_task` — najsporiji radnik određuje ukupno vreme
+
+### 5.3 Simetrično stablo — analiza
+
+Simetrično stablo ima **imbalance = 1.0** za svaku dubinu — sva podstabla imaju identičan broj grana. Zbog toga `T_ideal = T_worst` i podela posla je uvek savršena.
+
+| d  | N_seq  | num_tasks | max_task  | imbalance | T_ideal (8j.) | T_worst (8j.) |
+|----|-------:|----------:|----------:|:---------:|--------------:|--------------:|
+| 1  |      1 |         2 | 4,194,303 |   1.000   |   1,048,577   |   4,194,304   |
+| 3  |      7 |         8 | 1,048,575 |   1.000   |   1,048,582   |   1,048,582   |
+| **5** |  **31** |    **32** | **262,143** | **1.000** | **1,048,603** | **262,174** |
+| 8  |    255 |       256 |    32,767 |   1.000   |   1,048,799   |      33,022   |
+| 12 |  4,095 |     4,096 |     2,047 |   1.000   |   1,052,159   |       6,142   |
+
+*(Bold = heuristika za 8 jezgara)*
+
+**Zaključak za simetrično stablo:** T_ideal je minimalan na d=1 i blago raste sa d (zbog sve većeg N_seq). Heuristika d=5 daje T_ideal samo **0.003% lošije** od optimalnog d=1 — razlika je zanemariva. Heuristika je opravdana jer stvara više zadataka nego što ima jezgara (32 zadatka za 8 jezgara), što osigurava dobro iskorišćenje procesora.
+
+### 5.4 Asimetrično stablo — analiza
+
+Asimetrično stablo (r_left=0.67, r_right=0.57) **povećava imbalance sa svakom dubinom** — desna podstabla su sve manja relativno prema levima:
+
+| d  | N_seq | num_tasks | max_task | mean_task | imbalance | T_ideal (8j.) | T_worst (8j.) |
+|----|------:|----------:|---------:|----------:|:---------:|--------------:|--------------:|
+| 1  |     1 |         2 |  514,906 |  459,720  |   1.120   |     114,932   |     514,907   |
+| 3  |     7 |         8 |  161,522 |  114,929  |   1.405   |     114,937   |     161,529   |
+| **5** | **31** |    **32** |  **50,350** | **28,731** | **1.752** | **115,826** | **50,381** |
+| 6  |    63 |        64 |   27,991 |   14,365  |   1.949   |     114,986   |      28,054   |
+| 7  |   127 |       128 |   15,516 |    7,182  |   2.160   |     115,042   |      15,643   |
+| **11** | **2,047** | **2,048** | **1,466** | **448** | **3.273** | **116,722** | **3,513** |
+| 12 | 4,095 |     4,096 |      822 |      223  |   3.678   |     118,514   |       4,917   |
+
+*(Bold = heuristika d=5 za 8 jezgara; Bold d=11 = optimalni T_worst)*
+
+**Ključni zaključci:**
+
+1. **T_ideal je skoro isti za sve dubine** (114,932 do 118,514 — razlika ~3%) — povećanje N_seq kompenzuje bolja raspodela.
+2. **T_worst dramatično opada sa dubinom:** heuristika d=5 daje T_worst=50,381, dok optimalno d=11 daje T_worst=3,513 — to je **14× bolje u najgorem slučaju**.
+3. **Imbalance raste eksponencijalno** sa dubinom jer se razlika između levog i desnog podstabla multiplicira na svakom nivou.
+4. Heuristika `max(1, ceil(log2(N*4)))` je dizajnirana za simetrična stabla i **ne uzima u obzir load imbalance**. Za asimetrična stabla dublja podela je teorijski bolja.
+
+### 5.5 Empirijska potvrda (Rust, asimetrično, 8 jezgara)
+
+| d  | speedup | efikasnost |
+|:--:| :-----: | :--------: |
+| 1  |  1.021  |   12.8%    |
+| 2  |  1.870  |   23.4%    |
+| 3  |  2.685  |   33.6%    |
+| 4  |  2.426  |   30.3%    |
+| **5** | **2.658** | **33.2%** |
+| **6** | **3.020** | **37.8%** |
+| 7  |  2.392  |   29.9%    |
+| 8  |  2.527  |   31.6%    |
+| 9  |  2.133  |   26.7%    |
+| 10 |  1.683  |   21.0%    |
+| 11 |  2.045  |   25.6%    |
+| 12 |  2.046  |   25.6%    |
+
+**d=6 daje empirijski najviše ubrzanje (3.020×)** — jedna dubina dublje od heuristike (d=5 → 2.658×). Ovo je konzistentno sa teorijskim modelom koji pokazuje da veća dubina smanjuje load imbalance.
+
+**Python empirijski:** Svi split_depth-ovi daju speedup < 1 (0.583–0.817×) — spawn overhead potpuno dominira, heuristika nije relevantna.
+
+### 5.6 Zaključak
+
+| Stablo       | Optimalna metrika | Optimalni d (8j.) | Heuristika (d=5) | Razlika  |
+| ------------ | :---------------: | :---------------: | :--------------: | :------: |
+| Simetrično   | T_ideal           | d=1               | d=5              | ~0.003%  |
+| Asimetrično  | T_worst           | d=11              | d=5              | **14×**  |
+| Asimetrično  | Empirijski        | d=6               | d=5              | ~14%     |
+
+Heuristika je dobra za simetrična stabla ali suboptimalna za asimetrična. Za produkcijsku upotrebu sa neravnomernim stablima, optimalna `split_depth` bi trebala da zavisi od strukture stabla (odnosa ratia) i da cilja na minimizaciju `max_task`, a ne samo na broj zadataka.
+
+---
+
+## 6. Jako skaliranje (Strong Scaling)
+
+**Veličina problema:** fiksna, `min_length = 0.01`
+
+### 5.1 Simetrično stablo — Python (8,388,607 grana)
+
+<img src="data/symmetric/strong/python.png" width="700"/>
+
+| Jezgra |     Grane |  Srednje vreme | StdDev  | Ubrzanje | Amdahl (f=0.948) | Outlieri |
+| :----: | --------: | :------------: | :-----: | :------: | :--------------: | :------: |
+|   1    | 8,388,607 |   4.526 s      | 0.221 s |  1.000   |      1.000       |    0     |
+|   2    | 8,388,607 |   4.892 s      | 0.210 s | **0.925** |     1.027       |    0     |
+|   4    | 8,388,607 |   4.251 s      | 0.472 s |  1.065   |      1.041       |    0     |
+|   8    | 8,388,607 |   4.319 s      | 0.166 s |  1.048   |      1.048       |    0     |
+
+**Analiza:**
+
+- **2 jezgra sporija od 1 (0.925×):** Dodavanje drugog procesa donosi neto gubitak. Windows `spawn` overhead za pokretanje 2 procesa (~600 ms ukupno) premašuje uštedu od paralelnog računanja.
+- **4 jezgra:** Blago ubrzanje (1.065×) ali visok StdDev (0.472 s) ukazuje na nestabilna merenja, verovatno usled termalnog usporavanja ili OS schedulera.
+- **8 jezgara:** Skoro identično sa 4 jezgra (1.048×). Virtuelna jezgra 5–8 dele resurse sa fizičkim i ne donose dodatno ubrzanje.
+- **Zaključak:** Python paralelizacija za ovaj problem praktično ne funkcioniše. Maksimalno ubrzanje od 1.065× za 8.4M grana znači da je overhead ~95% efektivnog vremena.
+
+### 5.2 Simetrično stablo — Rust (8,388,607 grana)
+
+<img src="data/symmetric/strong/rust.png" width="700"/>
+
+| Jezgra |     Grane | Srednje vreme |  StdDev  | Ubrzanje | Amdahl (f=0.137) | Outlieri |
+| :----: | --------: | :-----------: | :------: | :------: | :--------------: | :------: |
+|   1    | 8,388,607 |  0.2223 s     | 0.0299 s |  1.000   |      1.000       |    0     |
+|   2    | 8,388,607 |  0.1075 s     | 0.0082 s | **2.068** |     1.759       |    0     |
+|   4    | 8,388,607 |  0.0694 s     | 0.0050 s |  3.204   |      2.835       |    0     |
+|   8    | 8,388,607 |  0.0545 s     | 0.0035 s | **4.083** |     4.083       |    1     |
+
+**Analiza:**
+
+- **Super-linearno ubrzanje na 2 jezgra (2.068× > idealni 2.0×):** Izmereno ubrzanje premašuje teorijski ideal. Uzrok su **keš efekti** — sa 2 niti svaka obrađuje upola manji skup podataka, koji bolje staje u L2/L3 keš, smanjujući broj cache miss-ova. Ovaj fenomen je poznat kao super-linearno ubrzanje zbog prostorne lokalnosti.
+- **4 jezgra (3.204×):** Premašuje Amdahlov maksimum za 2 i 4 jezgra — keš efekat i dalje prisutan.
+- **8 jezgara (4.083×):** Ubrzanje veće od 4 fizička jezgra. Virtuelna jezgra pomažu jer dok jedna nit čeka na memoriju, druga izvršava instrukcije na istom fizičkom jezgru (Hyper-Threading). f vrednost procenjena sa 8 jezgara (0.137) važi za ovaj slučaj.
+- **Zaključak:** Rust rayon postiže odlično skaliranje. Algoritam ima samo ~13.7% sekvencijalnog dela, teorijski maksimum ~7.3×, ograničen jedino brojem fizičkih jezgara.
+
+### 5.3 Asimetrično stablo — Python (919,442 grane)
+
+<img src="data/asymmetric/strong/python.png" width="700"/>
+
+| Jezgra |   Grane | Srednje vreme |  StdDev  | Ubrzanje | Outlieri |
+| :----: | ------: | :-----------: | :------: | :------: | :------: |
+|   1    | 919,442 |   0.585 s     | 0.058 s  |  1.000   |    2     |
+|   2    | 919,442 |   0.823 s     | 0.035 s  | **0.710** |   1     |
+|   4    | 919,442 |   0.774 s     | 0.028 s  | **0.756** |   1     |
+|   8    | 919,442 |   1.210 s     | 0.222 s  | **0.483** |   0     |
+
+**Analiza:**
+
+- Program postaje **sporiji sa svakim dodatnim jezgrom**. Sa 8 jezgara traje 2.07× duže nego sekvencijalno.
+- Uzrok: asimetrično stablo ima ~919K grana naspram ~8.4M za simetrično — manje računanja znači da spawn overhead dominira još više. Sa 8 procesa, Windows spawn cost (~2.4 s ukupno) premašuje samo računanje (0.585 s).
+- Sekvencijalna frakcija procijenjena na f=1.0 (clamped) jer je mereni "speedup" < 1.
+- **Argument za tezu:** Ovo je ekstreman primer gde overhead IPC-a ne samo da poništava dobit od paralelizacije, već aktivno usporava program. Veličina problema mora biti dovoljno velika da amortizuje fiksni overhead.
+
+### 5.4 Asimetrično stablo — Rust (919,442 grane)
+
+<img src="data/asymmetric/strong/rust.png" width="700"/>
+
+| Jezgra |   Grane | Srednje vreme |  StdDev  | Ubrzanje | Amdahl (f=0.186) | Outlieri |
+| :----: | ------: | :-----------: | :------: | :------: | :--------------: | :------: |
+|   1    | 919,442 |  0.02481 s    | 0.00128 s |  1.000  |      1.000       |    0     |
+|   2    | 919,442 |  0.01690 s    | 0.00304 s |  1.468  |      1.687       |    2     |
+|   4    | 919,442 |  0.01012 s    | 0.00227 s |  2.452  |      2.567       |    0     |
+|   8    | 919,442 |  0.00713 s    | 0.00071 s |  3.478  |      3.478       |    0     |
+
+**Analiza:**
+
+- Rust skalira i za asimetrično stablo, ali nešto slabije nego za simetrično (3.478× vs 4.083× na 8 jezgara).
+- Sekvencijalni deo je malo veći (f=0.186 vs f=0.137) — load imbalance povećava efektivni sekvencijalni deo, jer najsporiji radnik određuje ukupno vreme.
+- **Simetrično vs Asimetrično Rust:** Razlika u ubrzanju (~15%) direktno odražava cenu neravnomerne podele posla između podstabala desnog (ratio 0.57) i levog (ratio 0.67) tipa.
+
+---
+
+## 6. Slabo skaliranje (Weak Scaling)
+
+**Princip:** Broj grana po jezgru ostaje konstantan; ukupan posao raste proporcionalno broju jezgara. Idealno: vreme ostaje isto.
 
 ### 6.1 Manipulacija veličinom posla
 
-Cilj slabog skaliranja je da svako jezgro uvek ima **isti obim posla** — samo ih je više. Ako program dobro skalira, vreme izvršavanja bi trebalo da ostane isto bez obzira na broj jezgara.
+#### Simetrično stablo (16,383 grana po jezgru)
 
-**Kako je povećavan posao:** Parametar `min_length` kontroliše dokle se stablo grana — manji broj znači sitnije grane i dublje stablo. Zbog binarne strukture stabla (svaka grana rađa dve nove), svaki dodati nivo dubine **udvostručava** ukupan broj grana. Ovo je iskorišćeno da se posao precizno prilagodi broju jezgara:
+| Jezgra | Ukupno grana | Grana po jezgru | `min_length` |
+| :----: | :----------: | :-------------: | :----------: |
+|   1    |    16,383    |     16,383      |    0.500     |
+|   2    |    32,767    |     16,383      |    0.335     |
+|   4    |    65,535    |     16,383      |    0.224     |
+|   8    |   131,071    |     16,383      |    0.150     |
 
-| Jezgra | Dubina stabla | Ukupno grana | Grana po jezgru |
-| :----: | :-----------: | :----------: | :-------------: |
-|   1    |      13       |    16,383    |     16,383      |
-|   2    |      14       |    32,767    |     16,383      |
-|   4    |      15       |    65,535    |     16,383      |
-|   8    |      16       |   131,071    |     16,383      |
+#### Asimetrično stablo (~3,360 grana po jezgru)
 
-Svako jezgro dobija tačno isti broj grana (16,383) — samo je ukupan posao veći.
+| Jezgra | Ukupno grana | `min_length` |
+| :----: | :----------: | :----------: |
+|   1    |    3,360     |    0.500     |
+|   2    |    6,931     |    0.309     |
+|   4    |   13,695     |    0.191     |
+|   8    |   27,990     |    0.118     |
 
-### 6.2 Python — slabo skaliranje
+> **Napomena:** Asimetrično stablo ima manji broj grana pri istoj dubini jer desna grana brže dostiže `min_length` (ratio 0.57 < 0.67). Zbog toga je i apsolutno vreme mnogo kraće — što dodatno pojačava vidljivost Python spawn overhead-a.
 
-<img src="data/experiments/graphs/weak_scaling_python.png" width="700"/>
+### 6.2 Simetrično stablo — Python
 
-| Jezgra |   Grane | Srednje vreme |  StdDev   | Skalirano ubrzanje | Gustafson (f=1.000) | Outlieri |
+<img src="data/symmetric/weak/python.png" width="700"/>
+
+| Jezgra |   Grane | Srednje vreme |  StdDev   | Skalirano ubrzanje | Outlieri |
+| :----: | ------: | :-----------: | :-------: | :----------------: | :------: |
+|   1    |  16,383 |  0.00868 s    | 0.00040 s |       1.000        |    0     |
+|   2    |  32,767 |  0.37003 s    | 0.06333 s |     **0.047**      |    2     |
+|   4    |  65,535 |  0.48135 s    | 0.04745 s |     **0.072**      |    0     |
+|   8    | 131,071 |  0.60351 s    | 0.02954 s |     **0.115**      |    0     |
+
+**Analiza:**
+
+- Sa 1 jezgrom (sekvencijalno): 0.009 s. Sa 2 jezgra: 0.370 s — **42× sporije** iako je posao samo udvostručen.
+- Fiksni spawn overhead (~300 ms po procesu) je ~34× veći od samog računanja (0.009 s).
+- Skalirano ubrzanje 0.115 na 8 jezgara znači da program troši 8.7× više vremena nego što bi trebalo.
+- **Argument za tezu:** Python slabo skaliranje je nemoguće za probleme kraćeg od ~1–2 s po jezgru na Windows platformi. Spawn overhead je fiksna cena koja ne zavisi od veličine problema.
+
+### 6.3 Simetrično stablo — Rust
+
+<img src="data/symmetric/weak/rust.png" width="700"/>
+
+| Jezgra |   Grane | Srednje vreme |  StdDev   | Skalirano ubrzanje | Gustafson (f=0.734) | Outlieri |
 | :----: | ------: | :-----------: | :-------: | :----------------: | :-----------------: | :------: |
-|   1    |  16,383 |   0.00937 s   | 0.00075 s |       1.000        |        1.000        |    0     |
-|   2    |  32,767 |   0.36124 s   | 0.03788 s |     **0.052**      |        1.000        |    0     |
-|   4    |  65,535 |   0.44206 s   | 0.00612 s |     **0.085**      |        1.000        |    0     |
-|   8    | 131,071 |   0.66210 s   | 0.01598 s |     **0.113**      |        1.000        |    0     |
+|   1    |  16,383 |  0.000725 s   | 0.000338 s |       1.000       |        1.000        |    1     |
+|   2    |  32,767 |  0.000961 s   | 0.000189 s |       1.509       |        1.266        |    0     |
+|   4    |  65,535 |  0.001342 s   | 0.000342 s |       2.161       |        1.799        |    0     |
+|   8    | 131,071 |  0.002025 s   | 0.000255 s |     **2.864**     |        2.864        |    1     |
 
-**Analiza rezultata:**
+**Analiza:**
 
-Python ne pokazuje nikakvo korisno slabo skaliranje. Sa 1 jezgrom (bez paralelizacije) problem se rešava za **0.009s**. Čim se uključe 2 jezgra, vreme skače na **0.361s** — **40× sporije**, iako je posao samo udvostručen.
+- Sa 8 jezgara i 8× više posla, vreme raste samo 2.79× (0.725 ms → 2.025 ms) — efikasnost 35.8%.
+- Skalirano ubrzanje (2.864) premašuje Gustafsonov model za 2 i 4 jezgra — ponovo keš efekti pomažu.
+- f=0.734: ~73% posla je "efektivno sekvencijalno" za ovaj mali obim zadataka. Koordinacija niti (Rayon work-stealing) ima relativno veći trošak kada su zadaci kratki.
+- **Zaključak:** Rust dobro skalira čak i za male probleme jer nema spawn overhead — niti su već pripremljene u thread pool-u.
 
-Uzrok je isti kao i kod jakog skaliranja: pokretanje Python procesa na Windows-u košta ~300ms samo za "pripremu" (pokretanje novog interpretatora, učitavanje modula, prenos podataka). Kada sam računski posao traje manje od te pripreme, paralelizacija uvek gubi.
+### 6.4 Asimetrično stablo — Python
 
-**Zaključak:** Za mali i srednji obim posla, Python paralelizacija je kontraproduktivna — sekvencijalni program je višestruko brži. Vrednost `f = 1.0` ne znači da je ceo algoritam sekvencijalan — isti Python kod u jakom skaliranju (8.4M grana, 4.8s računanja) daje `f = 0.801`. Razlika nastaje jer je Python-ov spawn overhead (~300ms) fiksan i ne zavisi od veličine problema: za veliki problem on je ~6% vremena pa se ubrzanje vidi, a za mali problem slabog skaliranja (16,383 grana, 0.009s računanja) on je ~3000% računanja pa ubrzanja praktično nema.
+<img src="data/asymmetric/weak/python.png" width="700"/>
 
-### 6.3 Rust — slabo skaliranje
+| Jezgra |  Grane | Srednje vreme |  StdDev   | Skalirano ubrzanje | Outlieri |
+| :----: | -----: | :-----------: | :-------: | :----------------: | :------: |
+|   1    |  3,360 |  0.00201 s    | 0.00042 s |       1.000        |    0     |
+|   2    |  6,931 |  0.32247 s    | 0.02058 s |     **0.012**      |    1     |
+|   4    | 13,695 |  0.37601 s    | 0.00625 s |     **0.021**      |    1     |
+|   8    | 27,990 |  0.58950 s    | 0.05039 s |     **0.027**      |    0     |
 
-<img src="data/experiments/graphs/weak_scaling_rust.png" width="700"/>
+**Analiza:**
 
-| Jezgra |   Grane | Srednje vreme |   StdDev   | Skalirano ubrzanje | Gustafson (f=0.648) | Outlieri |
-| :----: | ------: | :-----------: | :--------: | :----------------: | :-----------------: | :------: |
-|   1    |  16,383 |  0.000600 s   | 0.000078 s |       1.000        |        1.000        |    0     |
-|   2    |  32,767 |  0.000717 s   | 0.000047 s |       1.674        |        1.352        |    0     |
-|   4    |  65,535 |  0.001173 s   | 0.000040 s |       2.046        |        2.055        |    0     |
-|   8    | 131,071 |  0.001387 s   | 0.000264 s |       3.462        |        3.462        |    0     |
+- Još katastrofalnije od simetričnog slučaja. Sa 2 jezgra program je **160× sporiji** (0.002 s → 0.322 s).
+- Uzrok: asimetrično stablo generiše ~3,360 grana sekvencijalno za 0.002 s — spawn overhead (~300 ms) je ~150× veći od samog računanja.
+- Skalirano ubrzanje od 0.027 na 8 jezgara: program troši 37× više vremena nego što bi trebalo.
 
-**Analiza rezultata:**
+### 6.5 Asimetrično stablo — Rust
 
-Rust skalira znatno bolje od Python-a, ali efikasnost postepeno opada jer se dodaje sve više jezgara:
+<img src="data/asymmetric/weak/rust.png" width="700"/>
 
-- Sa 2 jezgra i dvostruko više posla, vreme se povećava samo neznatno (0.6ms → 0.72ms) — **dobar rezultat**.
-- Sa 8 jezgara i 8× više posla, vreme raste na 1.39ms — program je ~3.5× efikasniji nego sa 1 jezgrom, od idealnih 8×.
+| Jezgra |  Grane | Srednje vreme |   StdDev  | Skalirano ubrzanje | Gustafson (f=0.960) | Outlieri |
+| :----: | -----: | :-----------: | :-------: | :----------------: | :-----------------: | :------: |
+|   1    |  3,360 |  0.000222 s   | 0.000050 s |       1.000       |        1.000        |    0     |
+|   2    |  6,931 |  0.000430 s   | 0.000135 s |       1.033       |        1.040        |    1     |
+|   4    | 13,695 |  0.000530 s   | 0.000152 s |       1.676       |        1.121        |    1     |
+|   8    | 27,990 |  0.001384 s   | 0.001177 s |     **1.283**     |        1.283        |    2     |
 
-Zašto nije idealno? Dva razloga:
+**Analiza:**
 
-1. **Posao je mali:** Svako jezgro radi samo ~0.6ms. Koordinacija između jezgara nije besplatna, i na ovako kratkim zadacima taj trošak je primetan.
-2. **Virtuelna jezgra:** Kao i kod jakog skaliranja, jezgra 5–8 dele hardver sa prvih 4, pa se ne ponaša kao pravo 8-jezgarno skaliranje.
-
-**Zaključak:** Merenja su stabilna i konzistentna, a ubrzanje raste sa svakim dodavanjem jezgara, što Python nije postigao.
+- Rust asimetrično slabo skaliranje je znatno lošije od simetričnog (1.283× vs 2.864× na 8 jezgara).
+- f=0.960 — gotovo ceo posao se ponaša kao sekvencijalan zbog load imbalance.
+- Visok StdDev na 8 jezgara (0.001177 s pri sredini 0.001384 s, tj. ~85% varijacije) ukazuje na nestabilna merenja — radnici završavaju u različito vreme, a najsporiji određuje ukupno vreme.
+- **Ključni zaključak za tezu:** Load imbalance u asimetričnom stablu transformiše potencijalno paralelni algoritam u praktično sekvencijalni. Čak i uz nultu overhead (Rust niti), neravnomerna podela posla eliminše korist od paralelizacije. Ovo potvrđuje da je **ravnomerna podela posla jednako važna kao i minimizacija overhead-a**.
 
 ---
 
-## 7. Zaključci
+## 7. Sumarni pregled rezultata
 
-| Metrika                               | Python  |      Rust      |
-| ------------------------------------- | :-----: | :------------: |
-| Sekvencijalno vreme (8.4M grana)      | 4.798 s |    0.215 s     |
-| Relativna brzina (Rust/Python)        |    —    | **22.3× brži** |
-| Max ubrzanje jako skaliranje (8 j.)   |  1.21×  |   **3.32×**    |
-| Efikasnost jako skaliranje (8 j.)     |  15.1%  |   **41.6%**    |
-| Amdahlov maksimum (∞ j.)              |  1.25×  |   **4.98×**    |
-| Sekvencijalna frakcija (jako skal.)   | ~80.1%  |     ~20.1%     |
-| Skalirano ubrzanje slabo skal. (8 j.) |  0.113  |   **3.462**    |
-| Efikasnost slabo skaliranje (8 j.)    |  1.4%   |   **43.3%**    |
-| Sekvencijalna frakcija (slabo skal.)  |  ~100%  |     ~64.8%     |
+### 7.1 Jako skaliranje (8 jezgara)
 
-**Rust je 22× brži od Python-a.** Za isti problem (8.4M grana), Rust završava za 0.215s, a Python za 4.798s. Rust je kompajliran jezik koji direktno izvršava instrukcije procesora, dok Python interpretira kod korak po korak.
+| Konfiguracija              | Seq. vreme (1j.) | Vreme (8j.)  | Ubrzanje | Sekvenc. frakcija `f` |
+| -------------------------- | :--------------: | :----------: | :------: | :-------------------: |
+| Simetrično — Rust          |    0.2223 s      |   0.0545 s   | **4.083×** |       13.7%         |
+| Simetrično — Python        |    4.526 s       |   4.319 s    |   1.048× |       94.8%           |
+| Asimetrično — Rust         |    0.02481 s     |   0.00713 s  | **3.478×** |       18.6%         |
+| Asimetrično — Python       |    0.585 s       |   1.210 s    | **0.483×** |      100%           |
 
-**Python paralelizacija praktično ne funkcioniše.** Sa 8 jezgara postiže se samo 1.21× ubrzanje — gotovo ništa. Svaki put kada Python pokrene novi proces, mora da pokrene potpuno novi Python interpretator i prenese podatke, što traje ~300ms. Taj trošak je veći od same računske dobiti.
+### 7.2 Slabo skaliranje (8 jezgara)
 
-**Rust paralelizacija funkcioniše dobro.** Sa 8 jezgara postiže se 3.32× ubrzanje. Rust niti ne zahtevaju pokretanje novih procesa — niti se kreiraju jednom i odmah preuzimaju posao, bez čekanja.
+| Konfiguracija              | Skalirano ubrzanje | Gustafson `f` | Efikasnost |
+| -------------------------- | :----------------: | :-----------: | :--------: |
+| Simetrično — Rust          |      **2.864×**    |     73.4%     |   35.8%    |
+| Asimetrično — Rust         |       1.283×       |     96.0%     |   16.0%    |
+| Simetrično — Python        |       0.115×       |    100.0%     |    1.4%    |
+| Asimetrično — Python       |       0.027×       |    100.0%     |    0.3%    |
 
-**Pravi plafon su 4 fizička jezgra.** Procesor ima 4 fizička i 8 virtualnih jezgara. Virtuelna jezgra dele hardverske resurse sa fizičkim, pa efektivno skaliranje staje negde između 4× i 8×. To važi i za Rust i za Python.
+---
 
-**Ograničenja eksperimenta.** Eksperimenti rađeni na laptop računaru — procesor može da uspori usled pregrevanja tokom dužih testova.
+## 8. Zaključci
+
+### 8.1 Rust vs Python
+
+**Rust je 22–307× brži od Python-a sekvencijalno**, a paralelizacijom postiže realno ubrzanje:
+
+- Simetrično jako skaliranje: Rust 4.083× vs Python 1.048× — razlika faktora ~4 u ubrzanju
+- Asimetrično jako skaliranje: Python postaje **2× sporiji** sa 8 jezgara dok Rust postiže 3.478×
+
+Razlog nije loš algoritam u Python-u — isti algoritam, isti problem. Razlog je:
+1. **Spawn overhead na Windows:** Svaki Python worker zahteva ~300 ms za pokretanje, nezavisno od veličine problema
+2. **GIL (Global Interpreter Lock):** Sprečava pravo višenitno računanje unutar jednog procesa — zbog toga Python mora koristiti više *procesa* umesto *niti*, što povlači spawn overhead
+3. **Pickle serializacija:** Svaki argument i rezultat mora biti serializovan kroz pipe između procesa
+
+### 8.2 Simetrično vs Asimetrično
+
+**Rust simetrično > Rust asimetrično** zbog load balancinga:
+
+- Jako skaliranje: 4.083× vs 3.478× (razlika ~15%)
+- Slabo skaliranje: 2.864× vs 1.283× (razlika ~55%)
+
+Asimetrično stablo ima desna podstabla ~20% manja od levih (ratio 0.57 vs 0.67). Kada se stablo raspodeli na N zadataka, zadaci imaju različite veličine — najsporiji radnik određuje ukupno vreme (Amdahlov zakon primenjeno na load imbalance). Za slabo skaliranje ovaj efekat je razorniji jer su zadaci manji pa relativna razlika u veličini više utiče.
+
+**Ključna lekcija:** Paralalizacija ne garantuje ubrzanje. Dva podjednako važna preduslova su: (1) nizak overhead komunikacije/koordinacije i (2) ravnomerna podela posla.
+
+### 8.3 Super-linearno ubrzanje (Rust simetrično jako skaliranje)
+
+Na 2 jezgra izmereno ubrzanje je 2.068× — veće od teorijskog ideala od 2.0×. Ovo je poznati fenomen: svaka nit obrađuje manji skup podataka koji bolje staje u privatni L2 keš (512 KB/jezgru), smanjujući broj promašaja kešom. Ovaj efekat nestaje na 4+ jezgara gde L3 keš postaje usko grlo.
+
+### 8.4 Hardversko ograničenje: fizička vs virtuelna jezgra
+
+Procesor ima 4 fizička i 8 virtualnih jezgara (Hyper-Threading). Za računski intenzivan zadatak poput generisanja fraktalnog stabla, virtuelna jezgra 5–8 dele ALU resurse sa fizičkim 1–4. Zbog toga:
+- Rust ubrzanje ne raste linearno između 4 i 8 jezgara
+- 8 jezgara daje ~27% više ubrzanja od 4 (4.083× vs 3.204×) umesto 2× više
 
 ---
 
 ## Grafici
 
-Svi grafici i CSV tabele nalaze se u direktorijumu:
-`data/experiments/graphs/`
+Grafici se nalaze u direktorijumu `data/`:
 
-| Fajl                        | Opis                                         |
-| --------------------------- | -------------------------------------------- |
-| `strong_scaling_python.png` | Jako skaliranje — Python (Amdahlov zakon)    |
-| `strong_scaling_rust.png`   | Jako skaliranje — Rust (Amdahlov zakon)      |
-| `weak_scaling_python.png`   | Slabo skaliranje — Python (Gustafonov zakon) |
-| `weak_scaling_rust.png`     | Slabo skaliranje — Rust (Gustafonov zakon)   |
-| `strong_scaling_python.csv` | Tabelarni podaci jako skaliranje — Python    |
-| `strong_scaling_rust.csv`   | Tabelarni podaci jako skaliranje — Rust      |
-| `weak_scaling_python.csv`   | Tabelarni podaci slabo skaliranje — Python   |
-| `weak_scaling_rust.csv`     | Tabelarni podaci slabo skaliranje — Rust     |
+| Fajl                                  | Opis                                           |
+| ------------------------------------- | ---------------------------------------------- |
+| `data/symmetric/strong/python.png`    | Simetrično jako skaliranje — Python            |
+| `data/symmetric/strong/rust.png`      | Simetrično jako skaliranje — Rust              |
+| `data/symmetric/weak/python.png`      | Simetrično slabo skaliranje — Python           |
+| `data/symmetric/weak/rust.png`        | Simetrično slabo skaliranje — Rust             |
+| `data/asymmetric/strong/python.png`   | Asimetrično jako skaliranje — Python           |
+| `data/asymmetric/strong/rust.png`     | Asimetrično jako skaliranje — Rust             |
+| `data/asymmetric/weak/python.png`     | Asimetrično slabo skaliranje — Python          |
+| `data/asymmetric/weak/rust.png`       | Asimetrično slabo skaliranje — Rust            |

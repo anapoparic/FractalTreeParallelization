@@ -91,4 +91,4 @@ path = "experiments/asymmetric/weak/8.rs"
 
 [[bin]]
 name = "exp_asym_variable_split_depth"
-path = "experiments/asymmetric/variable/split_depth.rs"
+path = "experiments/asymmetric/split_depth.rs"

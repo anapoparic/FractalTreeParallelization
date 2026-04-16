@@ -168,7 +168,7 @@ def print_table(rows, optimal_ideal, optimal_worst, current_d):
 def save_csv(rows, tree, n_processes):
     out_dir = os.path.join(DATA_DIR, tree, 'split_depth')
     os.makedirs(out_dir, exist_ok=True)
-    filename = f'optimal_split_{tree}_{n_processes}cores.csv' if tree == 'symmetric' else f'theoretical_{n_processes}.csv'
+    filename = f'theoretical_{n_processes}.csv'
     path = os.path.join(out_dir, filename)
     fields = ['split_depth','n_seq','num_tasks','n_parallel',
               'max_task','mean_task','imbalance','t_ideal','t_worst']

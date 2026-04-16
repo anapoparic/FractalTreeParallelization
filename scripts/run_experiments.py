@@ -101,8 +101,11 @@ def rust_bin_path(scaling, cores, tree='symmetric'):
 
 def run_single(cmd, timeout=600):
     """Run a single experiment and return execution time."""
+    env = os.environ.copy()
+    python_pkg_dir = os.path.join(PROJECT_ROOT, 'python')
+    env['PYTHONPATH'] = PROJECT_ROOT + os.pathsep + python_pkg_dir + os.pathsep + env.get('PYTHONPATH', '')
     result = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=timeout
+        cmd, capture_output=True, text=True, timeout=timeout, env=env
     )
     if result.returncode != 0:
         raise RuntimeError(f"Experiment failed ({cmd}):\nstderr: {result.stderr}")

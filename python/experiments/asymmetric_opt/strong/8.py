@@ -1,7 +1,6 @@
 from python.asymmetric_parallel import run_parallel_asymmetric
 
-# Asymmetric weak scaling: 4 processes, min_length=0.191
-# min_length = 0.5 * sqrt(0.67 * 0.57)^2 — two levels deeper, ~4x branches
+# Asymmetric strong scaling: 8 processes, split_depth=11 (optimal for T_worst)
 if __name__ == '__main__':
     result = run_parallel_asymmetric(
         trunk_length=100.0,
@@ -9,7 +8,8 @@ if __name__ == '__main__':
         right_ratio=0.57,
         left_angle=35.0,
         right_angle=25.0,
-        min_length=0.191,
-        num_processes=4,
+        min_length=0.01,
+        num_processes=8,
+        split_depth=11,
     )
     print(f"Finish in {result['execution_time']:.5f} seconds(s)")
