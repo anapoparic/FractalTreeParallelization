@@ -95,54 +95,60 @@ def compute_stats(data, nodes):
 # ---------------------------------------------------------------------------
 # Amdahl's and Gustafson's Laws
 # ---------------------------------------------------------------------------
-def amdahl_speedup(N, f):
-    """Amdahl's Law: S(N) = 1 / (f + (1-f)/N)."""
-    return 1.0 / (f + (1.0 - f) / N)
+def amdahl_speedup(N, p):
+    """Amdahl's Law: S(N) = 1 / ((1-p) + p/N), p = parallel fraction."""
+    return 1.0 / ((1.0 - p) + p / N)
 
 
-def gustafson_speedup(N, f):
-    """Gustafson's Law: S(N) = N - f*(N-1)."""
-    return N - f * (N - 1)
+def gustafson_speedup(N, p):
+    """Gustafson's Law: S(N) = N - (1-p)*(N-1), p = parallel fraction."""
+    return N - (1.0 - p) * (N - 1)
 
 
-def estimate_f_strong(stats):
-    """Estimate sequential fraction f from strong scaling data.
+def estimate_p_strong(stats):
+    """Estimate parallel fraction p from strong scaling data.
 
-    Uses the highest core-count result:
+    For each N > 1:
         S = T(1)/T(N)
-        f = (1/S - 1/N) / (1 - 1/N)
+        p = (1 - 1/S) / (1 - 1/N)
+    Returns average p across all core counts.
     """
     t1 = stats[0]['mean']
-    best = max(stats[1:], key=lambda s: s['cores']) if len(stats) > 1 else stats[0]
-    S = t1 / best['mean']
-    N = best['cores']
-    if N <= 1:
-        return 0.0
-    f = (1.0 / S - 1.0 / N) / (1.0 - 1.0 / N)
-    return max(0.0, min(1.0, f))
+    p_estimates = []
+    for s in stats[1:]:
+        N = s['cores']
+        S = t1 / s['mean']
+        p_i = (1.0 - 1.0 / S) / (1.0 - 1.0 / N)
+        p_estimates.append(max(0.0, min(1.0, p_i)))
+    if not p_estimates:
+        return 1.0
+    return sum(p_estimates) / len(p_estimates)
 
 
-def estimate_f_weak(stats):
-    """Estimate sequential fraction f from weak scaling data.
+def estimate_p_weak(stats):
+    """Estimate parallel fraction p from weak scaling data.
 
     Scaled speedup S_s = N * T(1) / T(N)
-    Gustafson: S_s = N - f*(N-1)
-    => f = (N - S_s) / (N - 1)
+    Gustafson: S_s = 1 + p*(N-1)
+    => p = (S_s - 1) / (N - 1)
+    Returns average p across all core counts.
     """
     t1 = stats[0]['mean']
-    best = max(stats[1:], key=lambda s: s['cores']) if len(stats) > 1 else stats[0]
-    N = best['cores']
-    if N <= 1:
-        return 0.0
-    S_scaled = N * t1 / best['mean']
-    f = (N - S_scaled) / (N - 1)
-    return max(0.0, min(1.0, f))
+    p_estimates = []
+    for s in stats[1:]:
+        N = s['cores']
+        S_scaled = N * t1 / s['mean']
+        p_i = (S_scaled - 1.0) / (N - 1.0)
+        p_estimates.append(max(0.0, min(1.0, p_i)))
+    if not p_estimates:
+        return 1.0
+    return sum(p_estimates) / len(p_estimates)
 
 
 # ---------------------------------------------------------------------------
 # Graph: Strong Scaling
 # ---------------------------------------------------------------------------
-def plot_strong_scaling(stats, f, language, output_path):
+def plot_strong_scaling(stats, p, language, output_path):
     """Generate strong scaling graph (Amdahl's Law)."""
     plt.style.use('dark_background')
     fig, ax = plt.subplots(figsize=(10, 7))
@@ -156,13 +162,13 @@ def plot_strong_scaling(stats, f, language, output_path):
     x_smooth = np.linspace(1, max_c, 200)
 
     # Ideal line: S = N
-    ax.plot(x_smooth, x_smooth, '--', color='#FFA500', linewidth=2,
+    ax.plot(x_smooth, x_smooth, '--', color='#00C853', linewidth=2,
             label='Ideal (S = N)', alpha=0.8)
 
     # Amdahl's theoretical curve
-    amdahl_y = [amdahl_speedup(x, f) for x in x_smooth]
-    ax.plot(x_smooth, amdahl_y, '-', color='#FFD700', linewidth=1.5,
-            label=f'Amdahl\'s Law (f = {f:.4f})', alpha=0.9)
+    amdahl_y = [amdahl_speedup(x, p) for x in x_smooth]
+    ax.plot(x_smooth, amdahl_y, '-', color='#AA00FF', linewidth=1.5,
+            label=f'Amdahl\'s Law (p = {p:.4f})', alpha=0.9)
 
     # Measured data points
     ax.plot(cores, speedups, 'o-', color='white', markersize=10,
@@ -196,7 +202,7 @@ def plot_strong_scaling(stats, f, language, output_path):
 # ---------------------------------------------------------------------------
 # Graph: Weak Scaling
 # ---------------------------------------------------------------------------
-def plot_weak_scaling(stats, f, language, output_path):
+def plot_weak_scaling(stats, p, language, output_path):
     """Generate weak scaling graph (Gustafson's Law)."""
     plt.style.use('dark_background')
     fig, ax = plt.subplots(figsize=(10, 7))
@@ -210,13 +216,13 @@ def plot_weak_scaling(stats, f, language, output_path):
     x_smooth = np.linspace(1, max_c, 200)
 
     # Ideal line: S = N
-    ax.plot(x_smooth, x_smooth, '--', color='#FFA500', linewidth=2,
+    ax.plot(x_smooth, x_smooth, '--', color='#00C853', linewidth=2,
             label='Ideal (S = N)', alpha=0.8)
 
     # Gustafson's theoretical curve
-    gustafson_y = [gustafson_speedup(x, f) for x in x_smooth]
-    ax.plot(x_smooth, gustafson_y, '-', color='#FFD700', linewidth=1.5,
-            label=f'Gustafson\'s Law (f = {f:.4f})', alpha=0.9)
+    gustafson_y = [gustafson_speedup(x, p) for x in x_smooth]
+    ax.plot(x_smooth, gustafson_y, '-', color='#AA00FF', linewidth=1.5,
+            label=f'Gustafson\'s Law (p = {p:.4f})', alpha=0.9)
 
     # Measured data points
     ax.plot(cores, scaled_speedups, 'o-', color='white', markersize=10,
@@ -250,7 +256,7 @@ def plot_weak_scaling(stats, f, language, output_path):
 # ---------------------------------------------------------------------------
 # Tables
 # ---------------------------------------------------------------------------
-def print_strong_table(stats, f, language):
+def print_strong_table(stats, p, language):
     """Print strong scaling table with statistics."""
     t1 = stats[0]['mean']
     num_runs = stats[0]['num_runs']
@@ -258,10 +264,10 @@ def print_strong_table(stats, f, language):
     print(f"\n  {'=' * 78}")
     print(f"  Strong Scaling — {language}  ({num_runs} runs per config)")
     print(f"  {'=' * 78}")
-    print(f"  Sequential fraction (f) = {f:.4f} ({f * 100:.2f}%)")
-    print(f"  Parallelizable fraction  = {1 - f:.4f} ({(1 - f) * 100:.2f}%)")
-    if f > 0:
-        print(f"  Amdahl's max speedup (inf cores) = {1 / f:.2f}")
+    print(f"  Parallel fraction (p)    = {p:.4f} ({p * 100:.2f}%)")
+    print(f"  Sequential fraction      = {1 - p:.4f} ({(1 - p) * 100:.2f}%)")
+    if p < 1.0:
+        print(f"  Amdahl's max speedup (inf cores) = {1 / (1 - p):.2f}")
     else:
         print(f"  Amdahl's max speedup (inf cores) = inf (fully parallelizable)")
     print()
@@ -275,7 +281,7 @@ def print_strong_table(stats, f, language):
 
     for s in stats:
         speedup = t1 / s['mean']
-        amdahl = amdahl_speedup(s['cores'], f)
+        amdahl = amdahl_speedup(s['cores'], p)
         print(f"  {s['cores']:5d} | {s['nodes']:15,} | {s['mean']:9.3f}s | "
               f"{s['stdev']:7.3f}s | {speedup:8.3f} | {amdahl:8.3f} | "
               f"{s['outlier_count']:8d}")
@@ -283,7 +289,7 @@ def print_strong_table(stats, f, language):
     return t1
 
 
-def print_weak_table(stats, f, language):
+def print_weak_table(stats, p, language):
     """Print weak scaling table with statistics."""
     t1 = stats[0]['mean']
     num_runs = stats[0]['num_runs']
@@ -291,8 +297,9 @@ def print_weak_table(stats, f, language):
     print(f"\n  {'=' * 84}")
     print(f"  Weak Scaling — {language}  ({num_runs} runs per config)")
     print(f"  {'=' * 84}")
-    print(f"  Sequential fraction (f) = {f:.4f} ({f * 100:.2f}%)")
-    print(f"  Gustafson's Law: S(N) = N - f*(N-1)")
+    print(f"  Parallel fraction (p)    = {p:.4f} ({p * 100:.2f}%)")
+    print(f"  Sequential fraction      = {1 - p:.4f} ({(1 - p) * 100:.2f}%)")
+    print(f"  Gustafson's Law: S(N) = N - (1-p)*(N-1)")
     print(f"  Workload scaling: resize parameter increases with cores")
     print(f"    -> Higher resize = deeper tree = more nodes per core")
     print()
@@ -306,13 +313,13 @@ def print_weak_table(stats, f, language):
 
     for s in stats:
         scaled_s = s['cores'] * t1 / s['mean']
-        gustafson = gustafson_speedup(s['cores'], f)
+        gustafson = gustafson_speedup(s['cores'], p)
         print(f"  {s['cores']:5d} | {s['nodes']:15,} | {s['mean']:9.3f}s | "
               f"{s['stdev']:7.3f}s | {scaled_s:8.3f} | {gustafson:9.3f} | "
               f"{s['outlier_count']:8d}")
 
 
-def save_table_csv(stats, scaling_type, t1_mean, f, language, output_path):
+def save_table_csv(stats, scaling_type, t1_mean, p, language, output_path):
     """Save detailed table to CSV for report inclusion."""
     with open(output_path, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
@@ -322,7 +329,7 @@ def save_table_csv(stats, scaling_type, t1_mean, f, language, output_path):
                              'speedup', 'amdahl_speedup', 'outliers', 'num_runs'])
             for s in stats:
                 speedup = t1_mean / s['mean']
-                amdahl = amdahl_speedup(s['cores'], f)
+                amdahl = amdahl_speedup(s['cores'], p)
                 writer.writerow([
                     s['cores'], s['nodes'], f"{s['mean']:.6f}",
                     f"{s['stdev']:.6f}", f"{speedup:.4f}",
@@ -333,7 +340,7 @@ def save_table_csv(stats, scaling_type, t1_mean, f, language, output_path):
                              'scaled_speedup', 'gustafson_speedup', 'outliers', 'num_runs'])
             for s in stats:
                 scaled_s = s['cores'] * t1_mean / s['mean']
-                gustafson = gustafson_speedup(s['cores'], f)
+                gustafson = gustafson_speedup(s['cores'], p)
                 writer.writerow([
                     s['cores'], s['nodes'], f"{s['mean']:.6f}",
                     f"{s['stdev']:.6f}", f"{scaled_s:.4f}",
@@ -390,19 +397,19 @@ def process_experiment(language, scaling_type, tree='symmetric'):
     label = f'{language} ({tree})'
 
     if scaling_type == 'strong':
-        f = estimate_f_strong(stats)
-        t1 = print_strong_table(stats, f, label)
-        plot_strong_scaling(stats, f, label,
+        p = estimate_p_strong(stats)
+        t1 = print_strong_table(stats, p, label)
+        plot_strong_scaling(stats, p, label,
                             os.path.join(graph_dir, f'{lang_lower}.png'))
-        save_table_csv(stats, 'strong', t1, f, label,
+        save_table_csv(stats, 'strong', t1, p, label,
                        os.path.join(graph_dir, f'{lang_lower}_stats.csv'))
     else:
-        f = estimate_f_weak(stats)
-        print_weak_table(stats, f, label)
+        p = estimate_p_weak(stats)
+        print_weak_table(stats, p, label)
         t1 = stats[0]['mean']
-        plot_weak_scaling(stats, f, label,
+        plot_weak_scaling(stats, p, label,
                           os.path.join(graph_dir, f'{lang_lower}.png'))
-        save_table_csv(stats, 'weak', t1, f, label,
+        save_table_csv(stats, 'weak', t1, p, label,
                        os.path.join(graph_dir, f'{lang_lower}_stats.csv'))
     return True
 

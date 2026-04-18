@@ -46,7 +46,7 @@ ASYM_R_RATIO = 0.57
 # ---------------------------------------------------------------------------
 # Analytical branch counting
 # ---------------------------------------------------------------------------
-def n_branches_symmetric(L, ratio, min_length):
+def count_branches_symmetric(L, ratio, min_length):
     """Total branches in a symmetric tree (closed form)."""
     if L < min_length:
         return 0
@@ -54,7 +54,7 @@ def n_branches_symmetric(L, ratio, min_length):
     return 2 ** (d_max + 1) - 1
 
 
-def n_branches_asymmetric(L, r_left, r_right, min_length):
+def count_branches_asymmetric(L, r_left, r_right, min_length):
     """Total branches in an asymmetric tree (analytical double sum)."""
     if L < min_length:
         return 0
@@ -79,7 +79,7 @@ def subtasks_symmetric(L, ratio, min_length, split_depth):
     start_len = L * (ratio ** split_depth)
     if start_len < min_length:
         return []
-    size = n_branches_symmetric(start_len, ratio, min_length)
+    size = count_branches_symmetric(start_len, ratio, min_length)
     count = 2 ** split_depth
     return [size] * count
 
@@ -98,7 +98,7 @@ def subtasks_asymmetric(L, r_left, r_right, min_length, split_depth):
         start_len = L * (r_left ** k) * (r_right ** m)
         if start_len < min_length:
             continue
-        size = n_branches_asymmetric(start_len, r_left, r_right, min_length)
+        size = count_branches_asymmetric(start_len, r_left, r_right, min_length)
         count = comb(d, k)   # number of paths with exactly k lefts and m rights
         sizes.extend([size] * count)
     return sizes
@@ -183,9 +183,9 @@ def save_csv(rows, tree, n_processes):
 # ---------------------------------------------------------------------------
 # Main analysis per tree type
 # ---------------------------------------------------------------------------
-def analyse_tree(tree, n_total, subtask_fn):
+def analyse_tree(tree, branches_total, subtask_fn):
     print(f"\n{'=' * 80}")
-    print(f"  {tree.upper()} TREE  —  N_total = {n_total:,}")
+    print(f"  {tree.upper()} TREE  —  N_total = {branches_total:,}")
     print(f"{'=' * 80}")
 
     for N in CORE_COUNTS:
@@ -233,8 +233,8 @@ def analyse_tree(tree, n_total, subtask_fn):
 # Main
 # ---------------------------------------------------------------------------
 def main():
-    n_sym  = n_branches_symmetric(TRUNK_LENGTH, SYM_RATIO, MIN_LENGTH)
-    n_asym = n_branches_asymmetric(TRUNK_LENGTH, ASYM_L_RATIO, ASYM_R_RATIO, MIN_LENGTH)
+    n_sym  = count_branches_symmetric(TRUNK_LENGTH, SYM_RATIO, MIN_LENGTH)
+    n_asym = count_branches_asymmetric(TRUNK_LENGTH, ASYM_L_RATIO, ASYM_R_RATIO, MIN_LENGTH)
 
     print("=" * 80)
     print("  OPTIMAL SPLIT DEPTH ANALYSIS")
