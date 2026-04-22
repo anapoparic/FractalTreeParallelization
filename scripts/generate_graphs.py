@@ -13,7 +13,6 @@ Requires: matplotlib, numpy (pip install matplotlib)
 import os
 import sys
 import csv
-import math
 import platform
 import statistics
 
@@ -21,7 +20,6 @@ try:
     import matplotlib
     matplotlib.use('Agg')  # Non-interactive backend for saving files
     import matplotlib.pyplot as plt
-    import matplotlib.ticker as ticker
     import numpy as np
 except ImportError:
     print("ERROR: matplotlib is required. Install with: pip install matplotlib")
@@ -60,11 +58,16 @@ def read_csv(filepath):
 def calculate_outliers(times):
     """Identify outliers using IQR method."""
     sorted_t = sorted(times)
-    n = len(sorted_t)
-    if n < 4:
+    if len(sorted_t) < 4:
         return []
-    q1 = sorted_t[n // 4]
-    q3 = sorted_t[3 * n // 4]
+
+    def quartile(data, p):
+        idx = p * (len(data) - 1)
+        lo, hi = int(idx), min(int(idx) + 1, len(data) - 1)
+        return data[lo] + (data[hi] - data[lo]) * (idx - lo)
+
+    q1 = quartile(sorted_t, 0.25)
+    q3 = quartile(sorted_t, 0.75)
     iqr = q3 - q1
     lower = q1 - 1.5 * iqr
     upper = q3 + 1.5 * iqr

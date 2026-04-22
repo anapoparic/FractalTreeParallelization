@@ -16,12 +16,13 @@ For each candidate split_depth d, it computes:
                      varies for asymmetric because r_left != r_right)
   - Load imbalance : max_task / mean_task  (1.0 = perfect balance)
   - T_ideal        : N_seq + ceil(N_parallel / N)   [best case, perfect balance]
-  - T_worst        : N_seq + max_task               [worst case, one slow worker]
+  - T_dynamic      : LPT heap simulation            [dynamic scheduling model]
 
-The optimal split_depth minimises T_ideal (or T_worst).
+The optimal split_depth minimises T_ideal (or T_dynamic).
 
 Usage: python scripts/theoretical_analysis.py
 """
+import heapq
 import math
 import os
 import csv
@@ -58,13 +59,15 @@ def count_branches_asymmetric(L, r_left, r_right, min_length):
     """Total branches in an asymmetric tree (analytical double sum)."""
     if L < min_length:
         return 0
-    d_left  = floor(log(min_length / L) / log(r_left))
-    d_right = floor(log(min_length / L) / log(r_right))
+    d_left = floor(log(min_length / L) / log(r_left))
     total = 0
     for k in range(d_left + 1):
-        for m in range(d_right + 1):
-            if L * (r_left ** k) * (r_right ** m) >= min_length:
-                total += comb(k + m, k)
+        left_len = L * (r_left ** k)
+        if left_len < min_length:
+            break
+        d_right_k = floor(log(min_length / left_len) / log(r_right))
+        for m in range(d_right_k + 1):
+            total += comb(k + m, k)
     return total
 
 
@@ -107,27 +110,37 @@ def subtasks_asymmetric(L, r_left, r_right, min_length, split_depth):
 # ---------------------------------------------------------------------------
 # Timing model
 # ---------------------------------------------------------------------------
+def t_dynamic(n_seq, subtask_sizes, n_processes):
+    """Simulate dynamic scheduling (LPT) — cores pick tasks as they free up."""
+    heap = [0] * n_processes
+    heapq.heapify(heap)
+    for task in sorted(subtask_sizes, reverse=True):
+        earliest = heapq.heappop(heap)
+        heapq.heappush(heap, earliest + task)
+    return n_seq + max(heap)
+
+
 def analyse_split_depth(split_depth, subtask_sizes, n_processes):
     """
     Given a list of subtask sizes and a process count, compute the theoretical
     execution cost (in units of 'branches computed').
 
-    T_ideal : N_seq + ceil(N_parallel / N)   — perfect load balance
-    T_worst : N_seq + max_task               — one worker gets the biggest task
+    T_ideal   : N_seq + ceil(N_parallel / N)   — perfect load balance
+    T_dynamic : LPT heap simulation             — dynamic scheduling
     """
     n_seq = 2 ** split_depth - 1
 
     if not subtask_sizes:
         return None
 
-    n_par      = sum(subtask_sizes)
-    max_task   = max(subtask_sizes)
-    mean_task  = n_par / len(subtask_sizes)
-    imbalance  = max_task / mean_task if mean_task > 0 else 1.0
-    num_tasks  = len(subtask_sizes)
+    n_par     = sum(subtask_sizes)
+    max_task  = max(subtask_sizes)
+    mean_task = n_par / len(subtask_sizes)
+    imbalance = max_task / mean_task if mean_task > 0 else 1.0
+    num_tasks = len(subtask_sizes)
 
     t_ideal = n_seq + math.ceil(n_par / n_processes)
-    t_worst = n_seq + max_task
+    t_dyn   = t_dynamic(n_seq, subtask_sizes, n_processes)
 
     return {
         'split_depth' : split_depth,
@@ -138,7 +151,7 @@ def analyse_split_depth(split_depth, subtask_sizes, n_processes):
         'mean_task'   : mean_task,
         'imbalance'   : imbalance,
         't_ideal'     : t_ideal,
-        't_worst'     : t_worst,
+        't_dynamic'   : t_dyn,
     }
 
 
@@ -149,19 +162,19 @@ def current_split_depth(n_processes):
 # ---------------------------------------------------------------------------
 # Print & save helpers
 # ---------------------------------------------------------------------------
-def print_table(rows, optimal_ideal, optimal_worst, current_d):
+def print_table(rows, optimal_ideal, optimal_dynamic, current_d):
     hdr = (f"  {'d':>3} | {'N_seq':>8} | {'tasks':>6} | {'N_par':>12} | "
-           f"{'max_task':>10} | {'imbalance':>9} | {'T_ideal':>12} | {'T_worst':>12} | {'note':>12}")
+           f"{'max_task':>10} | {'imbalance':>9} | {'T_ideal':>12} | {'T_dynamic':>12} | {'note':>12}")
     print(hdr)
     print('  ' + '-' * (len(hdr) - 2))
     for r in rows:
         note = []
-        if r['split_depth'] == optimal_ideal: note.append('OPT_IDEAL')
-        if r['split_depth'] == optimal_worst: note.append('OPT_WORST')
-        if r['split_depth'] == current_d:     note.append('CURRENT')
+        if r['split_depth'] == optimal_ideal:   note.append('OPT_IDEAL')
+        if r['split_depth'] == optimal_dynamic: note.append('OPT_DYN')
+        if r['split_depth'] == current_d:       note.append('CURRENT')
         print(f"  {r['split_depth']:>3} | {r['n_seq']:>8,} | {r['num_tasks']:>6,} | "
               f"{r['n_parallel']:>12,} | {r['max_task']:>10,} | "
-              f"{r['imbalance']:>9.3f} | {r['t_ideal']:>12,} | {r['t_worst']:>12,} | "
+              f"{r['imbalance']:>9.3f} | {r['t_ideal']:>12,} | {r['t_dynamic']:>12,} | "
               f"{'  '.join(note)}")
 
 
@@ -171,7 +184,7 @@ def save_csv(rows, tree, n_processes):
     filename = f'theoretical_{n_processes}.csv'
     path = os.path.join(out_dir, filename)
     fields = ['split_depth','n_seq','num_tasks','n_parallel',
-              'max_task','mean_task','imbalance','t_ideal','t_worst']
+              'max_task','mean_task','imbalance','t_ideal','t_dynamic']
     with open(path, 'w', newline='') as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()
@@ -206,14 +219,14 @@ def analyse_tree(tree, branches_total, subtask_fn):
             print("  No valid split depths found.")
             continue
 
-        optimal_ideal = min(rows, key=lambda r: r['t_ideal'])['split_depth']
-        optimal_worst = min(rows, key=lambda r: r['t_worst'])['split_depth']
+        optimal_ideal   = min(rows, key=lambda r: r['t_ideal'])['split_depth']
+        optimal_dynamic = min(rows, key=lambda r: r['t_dynamic'])['split_depth']
 
-        print_table(rows, optimal_ideal, optimal_worst, current_d)
+        print_table(rows, optimal_ideal, optimal_dynamic, current_d)
 
         # Gain of optimal over current
-        current_row  = next((r for r in rows if r['split_depth'] == current_d), None)
-        optimal_row  = next((r for r in rows if r['split_depth'] == optimal_ideal), None)
+        current_row = next((r for r in rows if r['split_depth'] == current_d), None)
+        optimal_row = next((r for r in rows if r['split_depth'] == optimal_ideal), None)
         if current_row and optimal_row:
             gain = (current_row['t_ideal'] - optimal_row['t_ideal']) / current_row['t_ideal'] * 100
             print(f"\n  Theoretical gain of OPT_IDEAL over CURRENT: {gain:+.2f}%")
@@ -245,7 +258,7 @@ def main():
     print(f"    Symmetric  ratio  : {SYM_RATIO}   →  N_total = {n_sym:,}")
     print(f"    Asymmetric ratios : L={ASYM_L_RATIO} / R={ASYM_R_RATIO}  →  N_total = {n_asym:,}")
     print(f"\n  Model: T = N_seq + ceil(N_parallel / N_cores)  [ideal, units = branches]")
-    print(f"         T = N_seq + max_task                    [worst case]")
+    print(f"         T = LPT heap simulation                 [dynamic scheduling]")
 
     sym_subtasks  = lambda d: subtasks_symmetric( TRUNK_LENGTH, SYM_RATIO, MIN_LENGTH, d)
     asym_subtasks = lambda d: subtasks_asymmetric(TRUNK_LENGTH, ASYM_L_RATIO, ASYM_R_RATIO, MIN_LENGTH, d)
