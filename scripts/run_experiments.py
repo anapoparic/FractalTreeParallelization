@@ -36,16 +36,16 @@ CORE_COUNTS = [1, 2, 4, 8]
 DEFAULT_RUNS = 10
 
 # min_length parameters per tree type and scaling strategy
-# Symmetric weak scaling: min_length = 0.5 * 0.67^log2(cores)
-# Asymmetric weak scaling: min_length = 0.5 * sqrt(0.67*0.57)^log2(cores) = 0.5 * 0.618^log2(cores)
+# Symmetric weak scaling:  min_length = 0.04  * 0.67^log2(cores)  → 1M..8.4M branches
+# Asymmetric weak scaling: min_length = 0.01  * 0.618^log2(cores) → ~1M..8M branches
 MIN_LENGTH_PARAMS = {
     'symmetric': {
-        'strong': {1: 0.01,  2: 0.01,  4: 0.01,  8: 0.01},
-        'weak':   {1: 0.5,   2: 0.335, 4: 0.224, 8: 0.150},
+        'strong': {1: 0.01,    2: 0.01,    4: 0.01,    8: 0.01},
+        'weak':   {1: 0.04,    2: 0.0268,  4: 0.017956, 8: 0.012031},
     },
     'asymmetric': {
-        'strong': {1: 0.01,  2: 0.01,  4: 0.01,  8: 0.01},
-        'weak':   {1: 0.5,   2: 0.309, 4: 0.191, 8: 0.118},
+        'strong': {1: 0.0023,  2: 0.0023,  4: 0.0023,  8: 0.0023},
+        'weak':   {1: 0.01,    2: 0.00618, 4: 0.003819, 8: 0.002360},
     },
 }
 

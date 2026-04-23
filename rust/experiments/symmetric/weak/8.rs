@@ -4,10 +4,10 @@ use std::f64::consts::PI;
 use std::time::Instant;
 
 const NUM_THREADS: usize = 8;
-// min_length = 0.5 * 0.67^3 = 0.150 — three levels deeper, ~8x branches
-const MIN_LENGTH: f64 = 0.150;
+// min_length = 0.04 * 0.67^3 = 0.012031 — three levels deeper, ~8x branches
+const MIN_LENGTH: f64 = 0.012031;
 
-// Weak scaling: 8 threads, min_length=0.150 (~8x work vs n=1)
+// Weak scaling: 8 threads, min_length=0.012031 (~8.4M branches, 8x work vs n=1)
 fn main() {
     let (ratio, ba) = (0.67_f64, 30.0_f64.to_radians());
     let split = (NUM_THREADS * 4).next_power_of_two().ilog2() as usize;

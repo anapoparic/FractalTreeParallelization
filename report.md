@@ -52,7 +52,7 @@
 | numpy           | 1.26.4  | Numeričke operacije, keš grana |
 | matplotlib      | 3.9.1   | Generisanje grafika            |
 
-> **Napomena — Windows multiprocessing:** Python `multiprocessing` na Windows platformi koristi metod **`spawn`** za kreiranje procesa (za razliku od `fork` na Linux/macOS). Metod `spawn`, svaki radni proces startuje potpuno novi Python interpretator, uvozi sve module i prima argumente serijalizacijom (pickle). Ovaj fiksni trošak (~300 ms po pokretanju) je dominantan faktor koji negativno utiče na Python paralelne rezultate.
+> **Napomena — Windows multiprocessing:** Python `multiprocessing` na Windows platformi koristi metod **`spawn`** za kreiranje procesa (za razliku od `fork` na Linux). Metod `spawn`, svaki radni proces startuje potpuno novi Python interpretator, uvozi sve module i prima argumente serijalizacijom (pickle). Ovaj fiksni trošak (~300 ms po pokretanju) je dominantan faktor koji negativno utiče na Python paralelne rezultate.
 
 **Rust okruženje:**
 
@@ -188,7 +188,12 @@ Gustafsonov zakon: kada se broj jezgara povećava, povećava se i veličina prob
 
 > **Zašto je asimetrično stablo lošije?**
 >
-> - **Rust:** Mali paralelni deo Rust asimetričnog stabla (~3%) posledica je dva faktora: pri ovoj veličini problema Rayon-ov overhead distribucije zadataka čini proporcionalno velik deo ukupnog vremena, a load imbalance asimetričnog stabla dodatno smanjuje iskoristivost jezgara. Simetrično stablo postiže p=13.7%, što ukazuje da strukturalna neravnoteža doprinosi razlici.
+> - **Rust:** Samo ~3% rada u asimetričnom stablu može da se paralelizuje iz dva razloga.
+
+    1. stablo je malo, pa se previše vremena troši na organizaciju paralelnog rada (Rayon mora da podeli zadatke između jezgara), umesto na sam računski posao.
+    2. grane stabla rastu različitim stopama (left_ratio=0.67, right_ratio=0.57), pa podstabla koja se paralelno izvršavaju imaju drastično različite veličine — neka jezgra završe rano i nemaju šta da preuzmu jer su preostali veliki taskovi već u toku.
+    Kod simetričnog stabla sva podstabla su jednake veličine, pa se posao ravnomerno raspoređuje i paralelizovani deo raste na 13.7%.
+
 > - **Python:** Gustafsonov model ovde ne važi — osnovna pretpostavka (konstantno vreme pri rastu problema) nije ispunjena, jer spawn overhead uzrokuje da vreme raste umesto da ostaje isto. Izmeren paralelni deo p bi bio negativan, pa implementacija mapira na 0, što daje besmislen rezultat gustafson = 1.0.
 
 ---

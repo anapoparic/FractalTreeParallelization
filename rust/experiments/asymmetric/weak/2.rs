@@ -4,10 +4,10 @@ use std::f64::consts::PI;
 use std::time::Instant;
 
 const NUM_THREADS: usize = 2;
-// min_length = 0.5 * sqrt(0.67 * 0.57)^1 = 0.309 — one level deeper, ~2x branches
-const MIN_LENGTH: f64 = 0.309;
+// min_length = 0.01 * 0.618^1 = 0.00618 — one level deeper, ~2x branches
+const MIN_LENGTH: f64 = 0.00618;
 
-// Asymmetric weak scaling: 2 threads, min_length=0.309 (~2x work vs n=1)
+// Asymmetric weak scaling: 2 threads, min_length=0.00618 (~2M branches, 2x work vs n=1)
 fn main() {
     let left_ratio = 0.67_f64;
     let right_ratio = 0.57_f64;

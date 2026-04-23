@@ -4,9 +4,9 @@ use std::f64::consts::PI;
 use std::time::Instant;
 
 const NUM_THREADS: usize = 8;
-const MIN_LENGTH: f64 = 0.01;
+const MIN_LENGTH: f64 = 0.0023;
 
-// Asymmetric strong scaling: 8 threads, fixed problem size (min_length=0.01)
+// Asymmetric strong scaling: 8 threads, fixed problem size (~8.5M branches)
 fn main() {
     let left_ratio = 0.67_f64;
     let right_ratio = 0.57_f64;
