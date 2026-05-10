@@ -1,0 +1,8 @@
+venv/
+python/venv/
+__pycache__/
+*.pyc
+*.egg-info/
+rust/target/
+.git/
+data/

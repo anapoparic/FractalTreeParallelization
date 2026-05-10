@@ -1,0 +1,7 @@
+services:
+  fractal-tree:
+    build: .
+    volumes:
+      - ./data:/app/data   # CSV and PNG outputs written here appear on your machine
+    stdin_open: true        # keeps stdin open for interactive use
+    tty: true               # allocates a terminal for interactive use

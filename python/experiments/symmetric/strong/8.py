@@ -1,0 +1,13 @@
+from python.symmetric_parallel import run_parallel
+
+# Strong scaling: 8 processes, fixed problem size
+if __name__ == '__main__':
+    result = run_parallel(
+        trunk_length=100.0,
+        ratio=0.67,
+        branch_angle=30.0,
+        min_length=0.01,
+        num_processes=8,
+        split_depth=5,
+    )
+    print(f"Finish in {result['execution_time']:.5f} seconds(s)")

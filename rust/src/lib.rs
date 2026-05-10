@@ -167,33 +167,133 @@ pub fn save_result(
 
 
 pub fn group_by_depth(branch_groups: &[Vec<Branch>]) -> Vec<Iteration> {
-    let max_depth = branch_groups.iter()
-        .flat_map(|g| g.iter())
-        .map(|b| b.depth)
-        .max();
-
-    let max_depth = match max_depth {
+    let all: Vec<&Branch> = branch_groups.iter().flat_map(|g| g.iter()).collect();
+    let max_depth = match all.iter().map(|b| b.depth).max() {
         Some(d) => d,
         None => return Vec::new(),
     };
 
-    let mut iterations = Vec::new();
+    // Group branches by depth in a single pass — O(n)
+    let mut by_depth: Vec<Vec<(f64, f64, f64, f64)>> = vec![Vec::new(); max_depth + 1];
+    for b in &all {
+        by_depth[b.depth].push((b.x1, b.y1, b.x2, b.y2));
+    }
 
-    for d in 0..=max_depth {
-        let branches_up_to_depth: Vec<_> = branch_groups
-            .iter()
-            .flat_map(|g| g.iter())
-            .filter(|b| b.depth <= d)
-            .map(|b| (b.x1, b.y1, b.x2, b.y2))
-            .collect();
-
+    // Build cumulative iterations — each level appends only its own branches
+    let mut cumulative: Vec<(f64, f64, f64, f64)> = Vec::with_capacity(all.len());
+    let mut iterations = Vec::with_capacity(max_depth + 1);
+    for (d, branches_at_depth) in by_depth.into_iter().enumerate() {
+        cumulative.extend(branches_at_depth);
         iterations.push(Iteration {
             iteration: d,
-            branch_count: branches_up_to_depth.len(),
-            branches: branches_up_to_depth,
+            branch_count: cumulative.len(),
+            branches: cumulative.clone(),
         });
     }
 
     iterations
+}
+
+
+// ── Asymmetric variants ───────────────────────────────────────────────────────
+// Left and right branches use independent ratio and angle parameters.
+// This breaks the equal-subtask assumption of the symmetric case and exposes
+// load-imbalance effects in the parallel implementations.
+
+pub fn generate_fractal_tree_asymmetric(
+    x: f64,
+    y: f64,
+    length: f64,
+    angle: f64,
+    left_ratio: f64,
+    right_ratio: f64,
+    left_angle: f64,
+    right_angle: f64,
+    min_length: f64,
+    start_depth: usize,
+) -> Vec<Branch> {
+    let mut branches = Vec::with_capacity(
+        count_branches_asymmetric(length, left_ratio, right_ratio, min_length)
+    );
+
+    fn recurse(
+        branches: &mut Vec<Branch>,
+        x: f64,
+        y: f64,
+        length: f64,
+        angle: f64,
+        left_ratio: f64,
+        right_ratio: f64,
+        left_angle: f64,
+        right_angle: f64,
+        min_length: f64,
+        depth: usize,
+    ) {
+        if length < min_length {
+            return;
+        }
+        let end_x = x + length * angle.cos();
+        let end_y = y + length * angle.sin();
+        branches.push(Branch { x1: x, y1: y, x2: end_x, y2: end_y, depth });
+
+        recurse(branches, end_x, end_y, length * left_ratio,  angle + left_angle,
+                left_ratio, right_ratio, left_angle, right_angle, min_length, depth + 1);
+        recurse(branches, end_x, end_y, length * right_ratio, angle - right_angle,
+                left_ratio, right_ratio, left_angle, right_angle, min_length, depth + 1);
+    }
+
+    recurse(&mut branches, x, y, length, angle,
+            left_ratio, right_ratio, left_angle, right_angle, min_length, start_depth);
+    branches
+}
+
+
+// Pre-calculates total branch count for asymmetric trees (left_ratio ≠ right_ratio).
+// Used for Vec::with_capacity to avoid reallocations.
+pub fn count_branches_asymmetric(
+    length: f64,
+    left_ratio: f64,
+    right_ratio: f64,
+    min_length: f64,
+) -> usize {
+    if length < min_length {
+        return 0;
+    }
+    1 + count_branches_asymmetric(length * left_ratio,  left_ratio, right_ratio, min_length)
+      + count_branches_asymmetric(length * right_ratio, left_ratio, right_ratio, min_length)
+}
+
+
+// Builds the sequential prefix (upper levels) and returns leaf tasks for parallel dispatch.
+// Mirrors collect_tasks but propagates independent left/right ratios and angles.
+pub fn collect_tasks_asymmetric(
+    upper: &mut Vec<Branch>,
+    x: f64,
+    y: f64,
+    length: f64,
+    angle: f64,
+    left_ratio: f64,
+    right_ratio: f64,
+    left_angle: f64,
+    right_angle: f64,
+    depth: usize,
+    split_depth: usize,
+) -> Vec<TaskParams> {
+    if depth >= split_depth {
+        return vec![TaskParams { x, y, length, angle, depth }];
+    }
+    let ex = x + length * angle.cos();
+    let ey = y + length * angle.sin();
+    upper.push(Branch { x1: x, y1: y, x2: ex, y2: ey, depth });
+
+    let mut tasks = collect_tasks_asymmetric(
+        upper, ex, ey, length * left_ratio, angle + left_angle,
+        left_ratio, right_ratio, left_angle, right_angle, depth + 1, split_depth,
+    );
+    tasks.extend(collect_tasks_asymmetric(
+        upper, ex, ey, length * right_ratio, angle - right_angle,
+        left_ratio, right_ratio, left_angle, right_angle, depth + 1, split_depth,
+    ));
+    tasks
 }
 
