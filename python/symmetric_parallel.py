@@ -8,8 +8,7 @@ from utils import print_header, print_params, print_result
 
 def _worker(args):
     x, y, length, angle, ratio, branch_angle_rad, min_length, depth = args
-    branches = generate_fractal_tree(x, y, length, angle, ratio, branch_angle_rad, min_length, start_depth=depth)
-    return np.array(branches, dtype=np.float64)
+    return generate_fractal_tree(x, y, length, angle, ratio, branch_angle_rad, min_length, start_depth=depth)
 
 
 def _build_tasks(x, y, length, angle, ratio, branch_angle_rad, min_length, depth, target_depth, upper_branches):
@@ -27,13 +26,14 @@ def _build_tasks(x, y, length, angle, ratio, branch_angle_rad, min_length, depth
 
 
 def run_parallel(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
-                        min_length=0.01, num_processes=None):
+                        min_length=0.01, num_processes=None, split_depth=None):
 
     if num_processes is None:
         num_processes = cpu_count()
 
     branch_angle_rad = math.radians(branch_angle)
-    split_depth = max(1, math.ceil(math.log2(num_processes * 4)))
+    if split_depth is None:
+        split_depth = max(1, math.ceil(math.log2(num_processes * 4)))
 
     print_header("Parallel (Python)")
     print_params(trunk_length, ratio, branch_angle, min_length,

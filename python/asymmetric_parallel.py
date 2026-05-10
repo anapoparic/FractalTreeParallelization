@@ -8,11 +8,10 @@ from utils import print_header, print_params, print_result
 
 def _worker(args):
     x, y, length, angle, left_ratio, right_ratio, left_angle_rad, right_angle_rad, min_length, depth = args
-    branches = generate_fractal_tree_asymmetric(
+    return generate_fractal_tree_asymmetric(
         x, y, length, angle, left_ratio, right_ratio, left_angle_rad, right_angle_rad, min_length,
         start_depth=depth
     )
-    return np.array(branches, dtype=np.float64)
 
 
 def _build_tasks(x, y, length, angle, left_ratio, right_ratio, left_angle_rad, right_angle_rad,

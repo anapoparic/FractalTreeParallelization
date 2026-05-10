@@ -10,5 +10,6 @@ if __name__ == '__main__':
         right_angle=25.0,
         min_length=0.0023,
         num_processes=4,
+        split_depth=5,
     )
     print(f"Finish in {result['execution_time']:.5f} seconds(s)")

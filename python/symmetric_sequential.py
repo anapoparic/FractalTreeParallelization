@@ -1,26 +1,31 @@
 import math
 import time
+import numpy as np
 from utils import print_header, print_params, print_result
 
-# Returns list of (x1, y1, x2, y2, depth) tuples.
+# Returns numpy array of shape (N, 5) with columns (x1, y1, x2, y2, depth).
 def generate_fractal_tree(x, y, length, angle, ratio, branch_angle_radians, min_length, start_depth=0):
+    if length < min_length:
+        return np.empty((0, 5), dtype=np.float64)
 
-    branches = []
+    max_depth = math.floor(math.log(min_length / length) / math.log(ratio))
+    branches = np.empty((2 ** (max_depth + 1) - 1, 5), dtype=np.float64)
+    idx = 0
 
     def recurse(x, y, length, angle, depth):
+        nonlocal idx
         if length < min_length:
             return
-
         end_x = x + length * math.cos(angle)
         end_y = y + length * math.sin(angle)
-        branches.append((x, y, end_x, end_y, depth))
-
+        branches[idx] = (x, y, end_x, end_y, depth)
+        idx += 1
         new_length = length * ratio
         recurse(end_x, end_y, new_length, angle + branch_angle_radians, depth + 1)
         recurse(end_x, end_y, new_length, angle - branch_angle_radians, depth + 1)
 
     recurse(x, y, length, angle, start_depth)
-    return branches
+    return branches[:idx]
 
 
 def run_sequential(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
@@ -37,7 +42,7 @@ def run_sequential(trunk_length=100.0, ratio=0.67, branch_angle=30.0,
     )
     execution_time = time.perf_counter() - start_time
 
-    max_depth = max(b[4] for b in branches) if branches else 0
+    max_depth = int(branches[:, 4].max()) if len(branches) > 0 else 0
     print_result(execution_time, len(branches), max_depth)
 
     result = {

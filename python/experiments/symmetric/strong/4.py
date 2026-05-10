@@ -8,5 +8,6 @@ if __name__ == '__main__':
         branch_angle=30.0,
         min_length=0.01,
         num_processes=4,
+        split_depth=5,
     )
     print(f"Finish in {result['execution_time']:.5f} seconds(s)")
