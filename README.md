@@ -29,7 +29,6 @@ Cilj projekta je:
 **Sekvencijalna verzija:**
 
 - Rekurzivna funkcija koja generiše grane stabla depth-first pristupom
-- Svaka grana se reprezentuje kao tuple (x1, y1, x2, y2, depth)
 - Algoritam koristi trigonometriju za izračunavanje krajnjih pozicija grana
 - Svaka grana se čuva kao red u numpy array-u oblika `(x1, y1, x2, y2, depth)`
 
@@ -37,7 +36,6 @@ Cilj projekta je:
 
 - **Biblioteka:** `multiprocessing.Pool`
 - **Strategija**: Sekvencijalno generisanje prvih `split_depth` nivoa, zatim paralelna obrada podstabala kroz pool worker procese
-- **Optimizacija**: Auto-kalkulacija optimalnog `split_depth` parametra na osnovu broja CPU jezgara
 - Svaki worker proces nezavisno generiše kompletno podstablo koristeći isti rekurzivni algoritam
 - Rezultati iz svih procesa se kombinuju kroz `numpy.concatenate` za efikasnu IPC serijalizaciju
 
@@ -54,7 +52,6 @@ Cilj projekta je:
 
 - **Biblioteka:** [Rayon](https://github.com/rayon-rs/rayon) - data parallelism biblioteka
 - **Strategija:** Identična Python strategiji - sekvencijalno generisanje prvih `split_depth` nivoa, zatim paralelna obrada podstabala
-- **Optimizacija**: Auto-kalkulacija optimalnog `split_depth` parametra na osnovu broja dostupnih threadova
 - Svaki task nezavisno generiše kompletno podstablo sa pre-alokovanim `Vec<Branch>`; rezultati se čuvaju kao `Vec<Vec<Branch>>` bez potrebe za spajanjem
 
 ### Vizualizacija
@@ -63,7 +60,7 @@ Vizualizacija fraktalnog stabla urađena je Python `turtle` bibliotekom (`python
 
 ### Merenje performansi
 
-Eksperimenti se pokreću kroz `scripts/run_all.py` koji za svaku konfiguraciju izvršava više ponavljanja i čuva rezultate u CSV format.
+Eksperimenti se pokreću kroz `scripts/run_experiments.py` koji za svaku konfiguraciju izvršava više ponavljanja i čuva rezultate u CSV formatu.
 
 **Metrika:**
 
