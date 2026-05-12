@@ -1,4 +1,4 @@
-# THESIS README — Paralelizacija generisanja fraktalnog stabla
+# Paralelizacija generisanja fraktalnog stabla
 
 **Autor:** Ana Poparić, SV 74/2021
 **Predmet:** Napredne tehnike programiranja
