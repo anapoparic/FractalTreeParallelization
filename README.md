@@ -86,11 +86,10 @@ Cilj je pokazati u kojim scenarijima paralelizacija daje najviše koristi i koje
 ## Pokretanje projekta
 
 ```bash
-# 1. Klonirati repozitorijum
-git clone <repo_url>
+# 1. 
 cd FractalTreeParallelization
 
-# 2. Build i pokretanje kontejnera
+# 2. 
 docker compose up --build -d
 
 # 3.
