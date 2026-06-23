@@ -43,7 +43,7 @@ def run_parallel_asymmetric(trunk_length=100.0, left_ratio=0.67, right_ratio=0.5
     left_angle_rad  = math.radians(left_angle)
     right_angle_rad = math.radians(right_angle)
     if split_depth is None:
-        split_depth = (num_processes * 4).bit_length() - 1
+        split_depth = max(1, math.ceil(math.log2(num_processes * 4)))
 
     print_header("Parallel Asymmetric (Python)")
     print_params(trunk_length, left_ratio, left_angle, min_length,
