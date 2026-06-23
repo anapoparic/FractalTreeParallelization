@@ -88,33 +88,33 @@ Amdahlov zakon: ako `f`deo programa mora biti sekvencijalan, maksimalno ubrzanje
 
 | N (jezgra) | Idealno |   Rust    |  Python   |
 | :--------: | :-----: | :-------: | :-------: |
-|   **p**    |    —    |   0.914   |   0.649   |
+|   **p**    |    —    |   0.914   |   0.614   |
 |     1      |  1.000  |   1.000   |   1.000   |
-|     2      |  2.000  |   1.842   |   1.481   |
-|     4      |  4.000  |   3.183   |   1.949   |
-|     8      |  8.000  |   5.003   |   2.315   |
-|     ∞      |    ∞    | **11.63** | **2.849** |
+|     2      |  2.000  |   1.842   |   1.443   |
+|     4      |  4.000  |   3.183   |   1.855   |
+|     8      |  8.000  |   5.003   |   2.163   |
+|     ∞      |    ∞    | **11.63** | **2.591** |
 
 **Rust:** Amdahlov model predviđa ubrzanje 5.003× za 8 jezgara, dok je izmereno 3.816×. Odstupanje ukazuje na dodatna ograničenja pri većem broju jezgara, poput memorijske propusnosti, sinhronizacije niti i drugih sistemskih overhead-a koje model ne uzima u obzir.
 
-**Python:** Izmerena ubrzanja su relativno bliska Amdahlovim predviđanjima za manji broj jezgara, ali pri 8 procesa dolazi do blagog pada performansi u odnosu na 4 procesa. To ukazuje da overhead pokretanja i koordinacije procesa na Windows platformi postaje značajan i smanjuje korist od dodatne paralelizacije. Sekvencijalni deo (`f ≈ 35.1%`) obuhvata i deo algoritma koji se izvršava sekvencijalno i trošak upravljanja `Pool` procesima.
+**Python:** Izmerena ubrzanja blisko prate Amdahlov model za manji broj jezgara, ali pri 8 procesa dolazi do pada performansi u odnosu na 4 procesa. To ukazuje da overhead pokretanja i koordinacije procesa na Windows platformi postaje dominantan i smanjuje korist od dodatne paralelizacije. Sekvencijalni deo (`f ≈ 38.6%`) obuhvata i deo algoritma koji se izvršava sekvencijalno i trošak upravljanja `Pool` procesima.
 
 #### Asimetrično stablo
 
 | N (jezgra) | Idealno |   Rust   |  Python   |
 | :--------: | :-----: | :------: | :-------: |
-|   **p**    |    —    |  0.837   |   0.517   |
+|   **p**    |    —    |  0.837   |   0.501   |
 |     1      |  1.000  |  1.000   |   1.000   |
-|     2      |  2.000  |  1.720   |   1.349   |
-|     4      |  4.000  |  2.686   |   1.633   |
-|     8      |  8.000  |  3.737   |   1.826   |
-|     ∞      |    ∞    | **6.13** | **2.070** |
+|     2      |  2.000  |  1.720   |   1.334   |
+|     4      |  4.000  |  2.686   |   1.602   |
+|     8      |  8.000  |  3.737   |   1.781   |
+|     ∞      |    ∞    | **6.13** | **2.004** |
 
 **Zašto je asimetrično stablo lošije i za Rust i za Python?**
 
 - **Rust:** Asimetrično stablo pogoršava skaliranje u odnosu na simetrično, jer neravnomerna raspodela podstabala povećava efektivni sekvencijalni deo (`f` raste sa 8.**6%** na **16.3%**). Iako Rayon koristi dinamičku raspodelu zadataka između niti, velika razlika u veličini podstabala dovodi do load imbalance efekta: neke niti završavaju ranije i čekaju završetak većih zadataka, što smanjuje efikasnost paralelizacije.
 
-- Python: I kod Python implementacije dolazi do pogoršanja skaliranja (`f` raste sa **35.1%** na **48.3%**). Pri fiksnom `split_depth=5` broj taskova ostaje isti, ali su zbog asimetrične strukture stabla njihove veličine neujednačene. Najsporiji proces određuje ukupno vreme izvršavanja, pa load imbalance postaje izraženiji nego kod simetričnog stabla. Izmereno ubrzanje na **8** procesa (**2.150×**) nešto je veće od Amdahlove predikcije (**1.826×**). Odstupanje može nastati zbog šuma u merenjima, nestabilnog OS scheduling-a, ili toga što jedan fiksni parametar `f` ne opisuje realno ponašanje sistema za sva `N`.
+- Python: I kod Python implementacije dolazi do pogoršanja skaliranja (`f` raste sa **38.6%** na **49.9%**). Zbog asimetrične strukture stabla, veličine podzadataka su neujednačene, pa najsporiji proces određuje ukupno vreme izvršavanja i load imbalance postaje izraženiji nego kod simetričnog stabla. Izmereno ubrzanje na **8** procesa (**1.741×**) blago zaostaje za Amdahlovom predikcijom (**1.781×**).
 
 ### 4.2 Gustafsonov zakon — Slabo skaliranje
 
@@ -160,20 +160,20 @@ Gustafsonov zakon: kada se broj jezgara povećava, povećava se i veličina prob
 
 <img src="data/symmetric/strong/python.png" width="700"/>
 
-| Jezgra |     Grane | Srednje vreme | StdDev  | Ubrzanje  | Amdahl (p=0.649) | Outlieri |
+| Jezgra |     Grane | Srednje vreme | StdDev  | Ubrzanje  | Amdahl (p=0.614) | Outlieri |
 | :----: | --------: | :-----------: | :-----: | :-------: | :--------------: | :------: |
-|   1    | 8,388,607 |    9.010 s    | 0.404 s |   1.000   |      1.000       |    1     |
-|   2    | 8,388,607 |    6.014 s    | 0.686 s |   1.498   |      1.481       |    0     |
-|   4    | 8,388,607 |    4.271 s    | 0.402 s | **2.110** |      1.949       |    1     |
-|   8    | 8,388,607 |    4.430 s    | 0.279 s |   2.034   |      2.315       |    2     |
+|   1    | 8,388,607 |    8.073 s    | 0.276 s |   1.000   |      1.000       |    2     |
+|   2    | 8,388,607 |    5.586 s    | 0.248 s |   1.445   |      1.443       |    1     |
+|   4    | 8,388,607 |    3.872 s    | 0.112 s | **2.085** |      1.855       |    0     |
+|   8    | 8,388,607 |    4.307 s    | 0.057 s |   1.874   |      2.163       |    1     |
 
-- Sa 2 procesa ubrzanje iznosi `1.498×`, što je veoma blisko Amdahlovoj predikciji (`1.481×`) i pokazuje da paralelizacija donosi merljivo poboljšanje performansi.
+- Sa 2 procesa ubrzanje iznosi `1.445×`, što je gotovo identično Amdahlovoj predikciji (`1.443×`) i pokazuje da paralelizacija donosi merljivo poboljšanje performansi.
 
-- Na 4 procesa postiže se maksimalno ubrzanje (`2.110×`), koje blago premašuje Amdahlovu predikciju (`1.949×`). To može ukazivati na povoljne cache efekte pri manjem radnom skupu po procesu.
+- Na 4 procesa postiže se maksimalno ubrzanje (`2.085×`), koje premašuje Amdahlovu predikciju (`1.855×`). To može ukazivati na povoljne cache efekte pri manjem radnom skupu po procesu.
 
-- Na 8 procesa ubrzanje opada na `2.034×`, ispod predikcije (`2.315×`). Ovakvo ponašanje ukazuje da overhead pokretanja i koordinacije `Pool` procesa na Windows platformi postaje značajan i smanjuje korist od dodatne paralelizacije.
+- Na 8 procesa ubrzanje opada na `1.874×`, ispod predikcije (`2.163×`). Ovakvo ponašanje ukazuje da overhead pokretanja i koordinacije `Pool` procesa na Windows platformi postaje dominantan i smanjuje korist od dodatne paralelizacije.
 
-- **Zaključak:** Python implementacija ostvaruje približno `2×` ubrzanje pri jakom skaliranju. Rezultati uglavnom prate Amdahlov model, ali odstupanja pri većem broju procesa pokazuju da overhead multiprocessing-a i sistemska ograničenja postaju dominantni faktor skaliranja.
+- **Zaključak:** Python implementacija ostvaruje približno `2×` ubrzanje pri jakom skaliranju. Rezultati blisko prate Amdahlov model na manjem broju procesa, ali pad performansi pri N=8 pokazuje da overhead multiprocessing-a postaje dominantni faktor skaliranja.
 
 ### Rust
 
@@ -200,22 +200,22 @@ Gustafsonov zakon: kada se broj jezgara povećava, povećava se i veličina prob
 
 <img src="data/asymmetric/strong/python.png" width="700"/>
 
-| Jezgra |     Grane | Srednje vreme | StdDev  | Ubrzanje  | Amdahl (p=0.517) | Outlieri |
+| Jezgra |     Grane | Srednje vreme | StdDev  | Ubrzanje  | Amdahl (p=0.501) | Outlieri |
 | :----: | --------: | :-----------: | :-----: | :-------: | :--------------: | :------: |
-|   1    | 8,464,173 |   10.685 s    | 1.920 s |   1.000   |      1.000       |    2     |
-|   2    | 8,464,173 |    8.610 s    | 0.661 s |   1.241   |      1.349       |    2     |
-|   4    | 8,464,173 |    6.265 s    | 0.713 s |   1.706   |      1.633       |    1     |
-|   8    | 8,464,173 |    4.970 s    | 0.235 s | **2.150** |      1.826       |    0     |
+|   1    | 8,464,173 |    8.215 s    | 0.299 s |   1.000   |      1.000       |    0     |
+|   2    | 8,464,173 |    5.743 s    | 0.281 s |   1.430   |      1.334       |    1     |
+|   4    | 8,464,173 |    5.653 s    | 0.792 s |   1.453   |      1.602       |    0     |
+|   8    | 8,464,173 |    4.719 s    | 0.196 s | **1.741** |      1.781       |    0     |
 
-- Ubrzanje raste sa brojem procesa (1.241× → 1.706× → 2.150×), što pokazuje stabilno skaliranje i bolje ponašanje u odnosu na simetrično stablo gde se performanse degradiraju pri većem broju jezgara.
+- Ubrzanje raste sa brojem procesa (1.430× → 1.453× → 1.741×), ali sa vidljivim platoom između N=2 i N=4 gde je napredak minimalan.
 
-- Na 2 procesa izmereno ubrzanje (`1.241×`) je ispod Amdahlove predikcije (`1.349×`), dok od 4 procesa nadalje izmerene vrednosti prelaze model. Na 8 procesa (`2.150×` vs `1.826×`) odstupanje ukazuje da Amdahlov model ne obuhvata u potpunosti dinamičke efekte raspodele posla i overhead multiprocessing sistema.
+- Na 2 procesa izmereno ubrzanje (`1.430×`) premašuje Amdahlovu predikciju (`1.334×`). Na 4 procesa dolazi do stagnacije — ubrzanje (`1.453×`) značajno zaostaje za predikcijom (`1.602×`) i jedva prevazilazi N=2 rezultat. Visoka standardna devijacija pri 4 procesa (`0.792 s`, ~14%) ukazuje na nestabilnost merenja, verovatno usled termalne regulacije procesora.
 
-- Visoka standardna devijacija pri jednom procesu (`1.920 s`, ~18%) ukazuje na značajnu varijabilnost merenja baseline izvršavanja, što može uticati na stabilnost svih relativnih speedup vrednosti.
+- Na 8 procesa ubrzanje (`1.741×`) blago zaostaje za Amdahlovom predikcijom (`1.781×`), što pokazuje da se paralelizacija odvija blizu teorijskog limita, ali uz povećan overhead koordinacije procesa.
 
-- Sekvencijalni deo (`f = 48.3%`) je veći nego kod simetričnog stabla (`35.1%`), što je posledica izraženog load imbalance efekta. Zbog neujednačene veličine podzadataka (32 taska različite težine), najsporiji task određuje ukupno vreme izvršavanja.
+- Sekvencijalni deo (`f = 49.9%`) je veći nego kod simetričnog stabla (`38.6%`), što je posledica izraženog load imbalance efekta. Zbog neujednačene veličine podzadataka, najsporiji task određuje ukupno vreme izvršavanja.
 
-- **Zaključak:** Iako asimetrično stablo ima veći sekvencijalni deo i lošiji teorijski potencijal skaliranja, u praksi pokazuje stabilno i monotono povećanje performansi, pri čemu dinamička raspodela zadataka delimično ublažava negativne efekte neravnomerne strukture.
+- **Zaključak:** Python implementacija ostvaruje maksimalno ubrzanje od `1.741×` pri 8 procesa. Rezultati u principu prate Amdahlov model, ali sa vidljivom nestabilnošću na 4 procesa i povećanim efektivnim sekvencijalnim delom u odnosu na simetrično stablo.
 
 ### Rust
 
@@ -331,9 +331,9 @@ Gustafsonov zakon: kada se broj jezgara povećava, povećava se i veličina prob
 | Konfiguracija        | Vreme (1j.) | Vreme (8j.) |  Ubrzanje  | Sekvenc. frakcija `f` |
 | -------------------- | :---------: | :---------: | :--------: | :-------------------: |
 | Simetrično — Rust    |  0.2113 s   |  0.0554 s   | **3.816×** |         8.6%          |
-| Simetrično — Python  |   9.010 s   |   4.430 s   |   2.034×   |         35.1%         |
+| Simetrično — Python  |   8.073 s   |   4.307 s   |   1.874×   |         38.6%         |
 | Asimetrično — Rust   |  0.2181 s   |  0.0584 s   | **3.736×** |         16.3%         |
-| Asimetrično — Python |  10.685 s   |   4.970 s   |   2.150×   |         48.3%         |
+| Asimetrično — Python |   8.215 s   |   4.719 s   |   1.741×   |         49.9%         |
 
 ### 7.2 Slabo skaliranje (8 jezgara)
 
@@ -352,8 +352,8 @@ Gustafsonov zakon: kada se broj jezgara povećava, povećava se i veličina prob
 
 Rust postiže značajno bolje performanse u odnosu na Python u svim merenjima, kako u sekvencijalnom tako i u paralelnom izvršavanju. Razlika u performansama raste kada se uključi paralelizacija:
 
-- Simetrično jako skaliranje: Rust 3.816× vs Python 2.034× — približno 1.9× veće ubrzanje
-- Asimetrično jako skaliranje: Rust 3.736× vs Python 2.150× — približno 1.7× veće ubrzanje
+- Simetrično jako skaliranje: Rust 3.816× vs Python 1.874× — približno 2.0× veće ubrzanje
+- Asimetrično jako skaliranje: Rust 3.736× vs Python 1.741× — približno 2.1× veće ubrzanje
 
 Razlog ove razlike nije u samom algoritmu, jer je isti u obe implementacije, već u karakteristikama runtime okruženja:
 

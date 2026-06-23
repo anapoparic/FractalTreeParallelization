@@ -8,7 +8,7 @@ import os
 from asymmetric_sequential import generate_fractal_tree_asymmetric
 from asymmetric_parallel import run_parallel_asymmetric
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 OUTPUT_DIR   = os.path.join(PROJECT_ROOT, 'data', 'asymmetric', 'split_depth')
 CSV_PATH     = os.path.join(OUTPUT_DIR, 'empirical_python.csv')
 
@@ -29,7 +29,7 @@ LEFT_RATIO    = 0.67
 RIGHT_RATIO   = 0.57
 LEFT_ANGLE    = 35.0
 RIGHT_ANGLE   = 25.0
-MIN_LENGTH    = 0.01
+MIN_LENGTH    = 0.0023
 SPLIT_DEPTHS  = list(range(1, 13))
 
 

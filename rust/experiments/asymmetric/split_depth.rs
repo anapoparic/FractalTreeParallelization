@@ -8,7 +8,7 @@ use std::path::Path;
 
 const NUM_THREADS: usize = 8;
 const NUM_RUNS:    usize = 3;
-const MIN_LENGTH:  f64   = 0.01;
+const MIN_LENGTH:  f64   = 0.0023;
 const TRUNK:       f64   = 100.0;
 const LEFT_RATIO:  f64   = 0.67;
 const RIGHT_RATIO: f64   = 0.57;

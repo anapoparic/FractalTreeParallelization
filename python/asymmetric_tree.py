@@ -6,11 +6,11 @@ LEFT_RATIO   = 0.67
 RIGHT_RATIO  = 0.57
 LEFT_ANGLE   = 35
 RIGHT_ANGLE  = 25
-MIN_LENGTH   = 3.0
+MIN_LENGTH   = 10.0
 
 t = tu.Turtle()
 wn = tu.Screen()
-wn.bgcolor("#0f0f14")
+wn.bgcolor("white")
 wn.title("Asymmetric Fractal Tree  |  L_ratio=0.67 L_angle=35°  R_ratio=0.57 R_angle=25°")
 t.left(90)
 t.speed(20)
@@ -43,4 +43,5 @@ if __name__ == "__main__":
     t.goto(0, -280)
     t.pendown()
     draw(TRUNK_LENGTH)
+    t.hideturtle()
     tu.done()
