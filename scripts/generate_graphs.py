@@ -79,9 +79,12 @@ def compute_stats(data, nodes):
     stats = []
     for cores in sorted(data.keys()):
         times = data[cores]
-        mean = statistics.mean(times)
-        stdev = statistics.stdev(times) if len(times) > 1 else 0.0
-        outliers = calculate_outliers(times)
+        outlier_vals = calculate_outliers(times)
+        clean_times = [t for t in times if t not in outlier_vals]
+        if not clean_times:
+            clean_times = times
+        mean = statistics.mean(clean_times)
+        stdev = statistics.stdev(clean_times) if len(clean_times) > 1 else 0.0
         stats.append({
             'cores': cores,
             'nodes': nodes[cores],
@@ -89,7 +92,7 @@ def compute_stats(data, nodes):
             'stdev': stdev,
             'min': min(times),
             'max': max(times),
-            'outlier_count': len(outliers),
+            'outlier_count': len(outlier_vals),
             'num_runs': len(times),
         })
     return stats
