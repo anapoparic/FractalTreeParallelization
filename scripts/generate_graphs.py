@@ -156,7 +156,7 @@ def estimate_p_weak(stats):
 # ---------------------------------------------------------------------------
 def plot_strong_scaling(stats, p, language, output_path):
     """Generate strong scaling graph (Amdahl's Law)."""
-    plt.style.use('dark_background')
+    plt.style.use('default')
     fig, ax = plt.subplots(figsize=(10, 7))
 
     t1 = stats[0]['mean']
@@ -168,17 +168,17 @@ def plot_strong_scaling(stats, p, language, output_path):
     x_smooth = np.linspace(1, max_c, 200)
 
     # Ideal line: S = N
-    ax.plot(x_smooth, x_smooth, '--', color='#00C853', linewidth=2,
-            label='Ideal (S = N)', alpha=0.8)
+    ax.plot(x_smooth, x_smooth, '--', color='#2E7D32', linewidth=2.5,
+            label='Ideal (S = N)', alpha=0.85)
 
     # Amdahl's theoretical curve
     amdahl_y = [amdahl_speedup(x, p) for x in x_smooth]
-    ax.plot(x_smooth, amdahl_y, '-', color='#AA00FF', linewidth=1.5,
+    ax.plot(x_smooth, amdahl_y, '-', color='#6A1B9A', linewidth=2.5,
             label=f'Amdahl\'s Law (p = {p:.4f})', alpha=0.9)
 
     # Measured data points
-    ax.plot(cores, speedups, 'o-', color='white', markersize=10,
-            linewidth=2, label='Measured', zorder=5)
+    ax.plot(cores, speedups, 'o-', color='#1565C0', markersize=10,
+            linewidth=2.5, label='Measured', zorder=5)
 
     # Time labels on each point
     for c, s, t in zip(cores, speedups, times):
@@ -186,21 +186,21 @@ def plot_strong_scaling(stats, p, language, output_path):
                     xy=(c, s),
                     xytext=(15, -5),
                     textcoords='offset points',
-                    color='#CCCCCC', fontsize=10,
-                    arrowprops=dict(arrowstyle='-', color='#666666', lw=0.5))
+                    color='#444444', fontsize=12, fontweight='bold',
+                    arrowprops=dict(arrowstyle='-', color='#AAAAAA', lw=0.5))
 
-    ax.set_xlabel('Number of processors', fontsize=13)
-    ax.set_ylabel('Speedup', fontsize=13)
+    ax.set_xlabel('Number of processors', fontsize=14)
+    ax.set_ylabel('Speedup', fontsize=14)
     ax.set_title(f'Strong Scaling — {language} (Amdahl\'s Law)', fontsize=15)
+    ax.tick_params(axis='both', labelsize=12)
     ax.set_xticks(cores)
     ax.set_xlim(0.5, max_c + 0.5)
     ax.set_ylim(0, max_c + 1)
-    ax.legend(loc='upper left', fontsize=11)
-    ax.grid(True, alpha=0.2)
+    ax.legend(loc='upper left', fontsize=12)
+    ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight',
-                facecolor=fig.get_facecolor())
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f"    Graph saved: {output_path}")
 
@@ -210,7 +210,7 @@ def plot_strong_scaling(stats, p, language, output_path):
 # ---------------------------------------------------------------------------
 def plot_weak_scaling(stats, p, language, output_path):
     """Generate weak scaling graph (Gustafson's Law)."""
-    plt.style.use('dark_background')
+    plt.style.use('default')
     fig, ax = plt.subplots(figsize=(10, 7))
 
     t1 = stats[0]['mean']
@@ -222,17 +222,17 @@ def plot_weak_scaling(stats, p, language, output_path):
     x_smooth = np.linspace(1, max_c, 200)
 
     # Ideal line: S = N
-    ax.plot(x_smooth, x_smooth, '--', color='#00C853', linewidth=2,
-            label='Ideal (S = N)', alpha=0.8)
+    ax.plot(x_smooth, x_smooth, '--', color='#2E7D32', linewidth=2.5,
+            label='Ideal (S = N)', alpha=0.85)
 
     # Gustafson's theoretical curve
     gustafson_y = [gustafson_speedup(x, p) for x in x_smooth]
-    ax.plot(x_smooth, gustafson_y, '-', color='#AA00FF', linewidth=1.5,
+    ax.plot(x_smooth, gustafson_y, '-', color='#6A1B9A', linewidth=2.5,
             label=f'Gustafson\'s Law (p = {p:.4f})', alpha=0.9)
 
     # Measured data points
-    ax.plot(cores, scaled_speedups, 'o-', color='white', markersize=10,
-            linewidth=2, label='Measured', zorder=5)
+    ax.plot(cores, scaled_speedups, 'o-', color='#1565C0', markersize=10,
+            linewidth=2.5, label='Measured', zorder=5)
 
     # Time labels on each point
     for c, s, t in zip(cores, scaled_speedups, times):
@@ -240,21 +240,21 @@ def plot_weak_scaling(stats, p, language, output_path):
                     xy=(c, s),
                     xytext=(15, -5),
                     textcoords='offset points',
-                    color='#CCCCCC', fontsize=10,
-                    arrowprops=dict(arrowstyle='-', color='#666666', lw=0.5))
+                    color='#444444', fontsize=12, fontweight='bold',
+                    arrowprops=dict(arrowstyle='-', color='#AAAAAA', lw=0.5))
 
-    ax.set_xlabel('Number of processors', fontsize=13)
-    ax.set_ylabel('Scaled Speedup', fontsize=13)
+    ax.set_xlabel('Number of processors', fontsize=14)
+    ax.set_ylabel('Scaled Speedup', fontsize=14)
     ax.set_title(f'Weak Scaling — {language} (Gustafson\'s Law)', fontsize=15)
+    ax.tick_params(axis='both', labelsize=12)
     ax.set_xticks(cores)
     ax.set_xlim(0.5, max_c + 0.5)
     ax.set_ylim(0, max_c + 1)
-    ax.legend(loc='upper left', fontsize=11)
-    ax.grid(True, alpha=0.2)
+    ax.legend(loc='upper left', fontsize=12)
+    ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight',
-                facecolor=fig.get_facecolor())
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f"    Graph saved: {output_path}")
 

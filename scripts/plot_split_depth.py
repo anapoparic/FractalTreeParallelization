@@ -51,26 +51,27 @@ def main():
     rust_max_d = rs_d[rs_s.index(rust_max_s)]
     rust_heur_s = rs_s[rs_d.index(HEURISTIC_D)]
 
-    plt.style.use('dark_background')
+    plt.style.use('default')
     fig, ax = plt.subplots(figsize=(10, 7))
 
     # --- curves ---
-    ax.plot(rs_d, rs_s, 'o-',  color='#FF6D00', linewidth=2, markersize=7,
+    ax.plot(rs_d, rs_s, 'o-',  color='#2E7D32', linewidth=2.5, markersize=8,
             label='Rust',   zorder=4)
-    ax.plot(py_d, py_s, 's--', color='#00B0FF', linewidth=2, markersize=7,
+    ax.plot(py_d, py_s, 's--', color='#6A1B9A', linewidth=2.5, markersize=8,
             label='Python', zorder=4)
 
     # --- heuristic vertical line ---
-    ax.axvline(x=HEURISTIC_D, color='#00C853', linewidth=1.5, linestyle=':',
+    ax.axvline(x=HEURISTIC_D, color='#E65100', linewidth=2, linestyle=':',
                label=f'Heuristic  d = {HEURISTIC_D}', zorder=3)
 
     # --- annotate Rust maximum ---
     ax.annotate(
         f'd = {rust_max_d},  S = {rust_max_s:.2f}×',
         xy=(rust_max_d, rust_max_s),
-        xytext=(rust_max_d + 0.7, rust_max_s - 0.7),
-        color='#FF6D00', fontsize=10,
-        arrowprops=dict(arrowstyle='->', color='#FF6D00', lw=1.2),
+        xytext=(rust_max_d, rust_max_s - 1.4),
+        color='#2E7D32', fontsize=12, fontweight='bold',
+        ha='center',
+        arrowprops=dict(arrowstyle='->', color='#2E7D32', lw=1.5),
     )
 
     # --- annotate heuristic Rust value ---
@@ -78,28 +79,28 @@ def main():
         f'Heuristic:  S = {rust_heur_s:.2f}×',
         xy=(HEURISTIC_D, rust_heur_s),
         xytext=(HEURISTIC_D - 3.8, rust_heur_s + 0.4),
-        color='#00C853', fontsize=10,
-        arrowprops=dict(arrowstyle='->', color='#00C853', lw=1.2),
+        color='#E65100', fontsize=12, fontweight='bold',
+        arrowprops=dict(arrowstyle='->', color='#E65100', lw=1.5),
     )
 
     # --- axes & labels ---
-    ax.set_xlabel('split_depth  (d)', fontsize=13)
-    ax.set_ylabel('Speedup  S', fontsize=13)
+    ax.set_xlabel('split_depth  (d)', fontsize=14)
+    ax.set_ylabel('Speedup  S', fontsize=14)
     ax.set_title(
         'Effect of split_depth on speedup — asymmetric tree  (N = 8)',
-        fontsize=14,
+        fontsize=15,
     )
+    ax.tick_params(axis='both', labelsize=12)
     ax.set_xticks(rs_d)
     ax.set_xlim(0.5, max(rs_d) + 0.5)
     ax.set_ylim(0, rust_max_s + 0.9)
-    ax.legend(loc='lower right', fontsize=11)
-    ax.grid(True, alpha=0.2)
+    ax.legend(loc='lower right', fontsize=12)
+    ax.grid(True, alpha=0.3)
 
     # --- save ---
     os.makedirs(SLIKE_DIR, exist_ok=True)
     plt.tight_layout()
-    plt.savefig(OUT_PATH, dpi=150, bbox_inches='tight',
-                facecolor=fig.get_facecolor())
+    plt.savefig(OUT_PATH, dpi=150, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f"Saved: {OUT_PATH}")
 
