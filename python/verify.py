@@ -83,7 +83,7 @@ def main():
         0, 0, SYM['trunk_length'], math.pi / 2,
         SYM['ratio'], math.radians(SYM['branch_angle']), SYM['min_length'],
     )
-    for n in [2, 4, 8]:
+    for n in [1, 2, 4, 8]:
         all_ok &= _check(f"symmetric   N={n}", seq_sym, _parallel_sym(**SYM, num_processes=n))
 
     seq_asym = generate_fractal_tree_asymmetric(
@@ -92,7 +92,7 @@ def main():
         math.radians(ASYM['left_angle']), math.radians(ASYM['right_angle']),
         ASYM['min_length'],
     )
-    for n in [2, 4, 8]:
+    for n in [1, 2, 4, 8]:
         all_ok &= _check(f"asymmetric  N={n}", seq_asym, _parallel_asym(**ASYM, num_processes=n))
 
     print()

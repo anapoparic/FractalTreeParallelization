@@ -9,12 +9,12 @@ use std::error::Error;
 
 
 fn sort_branches(branches: &mut Vec<Branch>) {
-    branches.sort_by(|a, b| {
-        a.x1.total_cmp(&b.x1)
-            .then(a.y1.total_cmp(&b.y1))
-            .then(a.x2.total_cmp(&b.x2))
-            .then(a.y2.total_cmp(&b.y2))
-            .then(a.depth.cmp(&b.depth))
+    // Round to 1e-6 precision before comparing so that the ~6e-15 floating-point
+    // discrepancy in the symmetric trunk endpoint (hardcoded 0 vs. computed cos(PI/2)*L)
+    // does not affect sort order.
+    branches.sort_by_key(|b| {
+        let r = |x: f64| -> i64 { (x * 1e6).round() as i64 };
+        (r(b.x1), r(b.y1), r(b.x2), r(b.y2), b.depth)
     });
 }
 
@@ -142,12 +142,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut all_ok = true;
 
-    for n in [2_usize, 4, 8] {
+    for n in [1_usize, 2, 4, 8] {
         let par = parallel_sym(100.0, 0.67, branch_angle_rad, 0.01, n);
         all_ok &= check(&format!("symmetric   N={n}"), seq_sym.clone(), par);
     }
 
-    for n in [2_usize, 4, 8] {
+    for n in [1_usize, 2, 4, 8] {
         let par = parallel_asym(100.0, 0.67, 0.57, left_angle_rad, right_angle_rad, 0.0023, n);
         all_ok &= check(&format!("asymmetric  N={n}"), seq_asym.clone(), par);
     }
