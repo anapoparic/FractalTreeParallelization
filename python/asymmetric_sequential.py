@@ -7,7 +7,7 @@ from utils import print_header, print_params, print_result
 
 def _count_asymmetric(starting_length, left_ratio, right_ratio, min_length):
     """Count branches exactly using memoization on (left_turns, right_turns).
-    Runs in O(D_left × D_right) ≈ O(459) steps regardless of tree size."""
+    Runs in O(D_left × D_right) ≈ O(305) steps regardless of tree size."""
     @lru_cache(maxsize=None)
     def count(a, b):
         if starting_length * (left_ratio ** a) * (right_ratio ** b) < min_length:
