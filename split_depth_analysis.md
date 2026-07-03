@@ -7,103 +7,99 @@
 Paralelna implementacija najpre sekvencijalno gradi gornje nivoe stabla do dubine `split_depth`, a zatim svako podstablo na toj dubini predaje kao nezavisan zadatak radnom procesu/niti. Korišćena heuristika je:
 
 ```
-split_depth = max(1, ceil(log2(N * 4)))
+split_depth = floor(log2(N * 4))
 ```
 
 | N (jezgra) | split_depth (heuristika) |
 | :--------: | :----------------------: |
-|     1      |            3             |
 |     2      |            3             |
 |     4      |            4             |
 |     8      |            5             |
 
-Pitanje: **da li je ova heuristika optimalna?**
+Faktor 4 zasnovan je na principu prekomerne raspodele zadataka (oversubscription): generiše se višestruko više zadataka nego što ima raspoloživih jezgara, čime se obezbeđuje da jezgra koja završe ranije odmah preuzmu nove zadatke.
 
 ---
 
-## 2. Model troška
+## 2. Eksperiment
 
-Za datu `split_depth = d` i broj jezgara `N`:
+**Cilj:** utvrditi da li je heuristika empirijski opravdana za asimetrično stablo i zašto Python ne profitira od promene `split_depth`.
 
-- `N_seq = 2^d − 1` — grane izračunate sekvencijalno (pre podele posla)
-- `N_parallel = N_total − N_seq` — grane u podstablima (paralelni deo)
-- `T_ideal = N_seq + ⌈N_parallel / N⌉` — savršena podela posla
-- `T_dynamic` — simulacija dinamičkog raspoređivanja (LPT): radnik koji završi zadatak odmah uzima sledeći
+**Parametri eksperimenta:**
 
----
+| Parametar      | Vrednost         |
+| -------------- | ---------------- |
+| Stablo         | Asimetrično      |
+| `left_ratio`   | 0.67             |
+| `right_ratio`  | 0.57             |
+| `min_length`   | 0.0023           |
+| Broj grana     | 8,464,173        |
+| N (jezgra)     | 8                |
+| `split_depth`  | 1 – 12           |
+| Ponavljanja    | 3 (Rust: 5)      |
 
-## 3. Simetrično stablo — analiza
-
-Simetrično stablo ima **imbalance = 1.0** za svaku dubinu — sva podstabla imaju identičan broj grana. Zbog toga je podela posla uvek savršena.
-
-| d     |  N_seq | num_tasks |    max_task | imbalance | T_ideal (8j.) | T_dynamic (8j.) |
-| ----- | -----: | --------: | ----------: | :-------: | ------------: | --------------: |
-| 1     |      1 |         2 |   4,194,303 |   1.000   |     1,048,577 |       4,194,304 |
-| 3     |      7 |         8 |   1,048,575 |   1.000   |     1,048,582 |       1,048,582 |
-| **5** | **31** |    **32** | **262,143** | **1.000** | **1,048,603** |     **262,174** |
-| 8     |    255 |       256 |      32,767 |   1.000   |     1,048,799 |          33,022 |
-| 12    |  4,095 |     4,096 |       2,047 |   1.000   |     1,052,159 |           6,142 |
-
-_(Bold = heuristika za 8 jezgara)_
-
-**Zaključak:** T_ideal je minimalan na d=1 i blago raste sa d (zbog sve većeg sekvencijalnog dela). Heuristika d=5 daje T_ideal samo **0.003% lošije** od optimalnog d=1 — razlika je zanemariva. Heuristika je opravdana jer stvara više zadataka nego što ima jezgara (32 zadatka za 8 jezgara), što osigurava dobro iskorišćenje procesora.
+Sekvencijalno vreme meri se jednom pre petlje i koristi kao imenilac za sve vrednosti ubrzanja.
 
 ---
 
-## 4. Asimetrično stablo — analiza
+## 3. Rezultati
 
-Asimetrično stablo (r_left=0.67, r_right=0.57) **povećava neravnomernost sa svakom dubinom** — desna podstabla su sve manja relativno prema levima:
+### Rust
 
-| d      |     N_seq | num_tasks |   max_task |  mean_task | imbalance | T_ideal (8j.) | T_dynamic (8j.) |
-| ------ | --------: | --------: | ---------: | ---------: | :-------: | ------------: | --------------: |
-| 1      |         1 |         2 |    514,906 |    459,720 |   1.120   |       114,932 |         514,907 |
-| 3      |         7 |         8 |    161,522 |    114,929 |   1.405   |       114,937 |         161,529 |
-| **5**  |    **31** |    **32** | **50,350** | **28,731** | **1.752** |   **115,826** |      **50,381** |
-| 6      |        63 |        64 |     27,991 |     14,365 |   1.949   |       114,986 |          28,054 |
-| 7      |       127 |       128 |     15,516 |      7,182 |   2.160   |       115,042 |          15,643 |
-| **11** | **2,047** | **2,048** |  **1,466** |    **448** | **3.273** |   **116,722** |       **3,513** |
-| 12     |     4,095 |     4,096 |        822 |        223 |   3.678   |       118,514 |           4,917 |
+| d     | num_tasks | par_mean (s) |  speedup | efikasnost | napomena     |
+| :---: | --------: | -----------: | -------: | :--------: | ------------ |
+|   1   |         2 |      0.17867 |   1.52×  |   19.0%    |              |
+|   2   |         4 |      0.14682 |   1.85×  |   23.2%    |              |
+|   3   |         8 |      0.09858 |   2.76×  |   34.5%    |              |
+|   4   |        16 |      0.08201 |   3.32×  |   41.5%    |              |
+| **5** |    **32** |  **0.06972** | **3.90×** | **48.8%** | **heuristika** |
+|   6   |        64 |      0.06870 |   3.96×  |   49.5%    |              |
+|   7   |       128 |      0.07011 |   3.88×  |   48.5%    |              |
+| **8** |   **256** |  **0.06367** | **4.27×** | **53.4%** | **empirijski optimum** |
+|   9   |       512 |      0.06452 |   4.22×  |   52.7%    |              |
+|  10   |     1,024 |      0.07051 |   3.86×  |   48.2%    |              |
+|  11   |     2,048 |      0.08572 |   3.18×  |   39.7%    |              |
+|  12   |     4,096 |      0.10556 |   2.58×  |   32.2%    |              |
 
-_(Bold d=5 = heuristika; bold d=11 = optimalni T_dynamic za 8 jezgara)_
+### Python
 
-**Ključni zaključci:**
-
-1. **T_ideal je skoro isti za sve dubine** (114,932 do 118,514 — razlika ~3%) — povećanje sekvencijalnog dela kompenzuje bolja podela posla.
-2. **T_dynamic dramatično opada sa dubinom:** heuristika d=5 daje T_dynamic=50,381, dok optimalno d=11 daje T_dynamic=3,513 — to je **14× bolje u realnom scenariju**.
-3. **Neravnomernost raste eksponencijalno** sa dubinom jer se razlika između levog i desnog podstabla multiplicira na svakom nivou.
-4. Heuristika `max(1, ceil(log2(N*4)))` je projektovana za simetrična stabla i **ne uzima u obzir neravnomernost podele posla**. Za asimetrična stabla, dublja podela je teorijski bolja.
-
----
-
-## 5. Empirijska potvrda (Rust, asimetrično, 8 jezgara)
-
-|   d   |  speedup  | efikasnost |
-| :---: | :-------: | :--------: |
-|   1   |   1.021   |   12.8%    |
-|   2   |   1.870   |   23.4%    |
-|   3   |   2.685   |   33.6%    |
-|   4   |   2.426   |   30.3%    |
-| **5** | **2.658** | **33.2%**  |
-| **6** | **3.020** | **37.8%**  |
-|   7   |   2.392   |   29.9%    |
-|   8   |   2.527   |   31.6%    |
-|   9   |   2.133   |   26.7%    |
-|  10   |   1.683   |   21.0%    |
-|  11   |   2.045   |   25.6%    |
-|  12   |   2.046   |   25.6%    |
-
-**d=6 daje empirijski najviše ubrzanje (3.020×)** — jedna dubina dublje od heuristike (d=5 → 2.658×). Ovo je konzistentno sa teorijskim modelom koji pokazuje da veća dubina smanjuje neravnomernost podele posla.
-
-**Python empirijski:** Svi split_depth-ovi daju ubrzanje < 1 (0.583–0.817×) — trošak pokretanja novih procesa potpuno dominira, heuristika nije relevantna.
+| d     | num_tasks | par_mean (s) |  speedup | efikasnost | napomena       |
+| :---: | --------: | -----------: | -------: | :--------: | -------------- |
+|   1   |         2 |      6.86945 |   1.15×  |   14.4%    |                |
+|   2   |         4 |      4.89451 |   1.62×  |   20.2%    |                |
+|   3   |         8 |      4.33892 |   1.83×  |   22.8%    |                |
+|   4   |        16 |      4.27542 |   1.85×  |   23.2%    |                |
+| **5** |    **32** |  **4.38104** | **1.81×** | **22.6%** | **heuristika** |
+|   6   |        64 |      4.38993 |   1.81×  |   22.6%    |                |
+|   7   |       128 |      4.42893 |   1.79×  |   22.4%    |                |
+|   8   |       256 |      4.46664 |   1.77×  |   22.2%    |                |
+|   9   |       512 |      4.58765 |   1.73×  |   21.6%    |                |
+|  10   |     1,024 |      5.01738 |   1.58×  |   19.8%    |                |
+|  11   |     2,048 |      4.72614 |   1.68×  |   21.0%    |                |
+|  12   |     4,096 |      4.76309 |   1.66×  |   20.8%    |                |
 
 ---
 
-## 6. Zaključak
+## 4. Analiza
 
-| Stablo      | Optimalna metrika | Optimalni d (8j.) | Heuristika (d=5) | Razlika |
-| ----------- | :---------------: | :---------------: | :--------------: | :-----: |
-| Simetrično  |      T_ideal      |        d=1        |       d=5        | ~0.003% |
-| Asimetrično |     T_dynamic     |       d=11        |       d=5        | **14×** |
-| Asimetrično |    Empirijski     |        d=6        |       d=5        |  ~14%   |
+### Rust
 
-Heuristika je dobra za simetrična stabla ali suboptimalna za asimetrična. Za produkcionu upotrebu sa neravnomernim stablima, optimalna `split_depth` bi trebala da zavisi od strukture stabla (odnosa ratia) i da cilja na minimizaciju `max_task`.
+Ubrzanje raste od d=1 do d=8, a zatim opada. Empirijski optimum je **d=8 (4.27×)**. Heuristika d=5 daje **3.90×** — razlika od ~9.5%.
+
+Pad ubrzanja za d≥9 nastaje jer sekvencijalna faza postaje prevelika: pri d=8 sekvencijalno se obrađuje 255 gornjih grana, pri d=9 već 511, itd. Za asimetrično stablo, leva i desna podstabla na istoj dubini nisu jednake veličine (`r_left ≠ r_right`), pa heuristika obezbeđuje više zadataka nego što ima jezgara — Rayon-ov algoritam krađe posla dinamički raspoređuje neujednačena opterećenja.
+
+Razlika od ~9.5% između d=5 i d=8 postoji, ali nije uvek vredna komplikacije: pri d=8 sekvencijalna faza je 8× veća (255 vs 31 grana), a empirijska dobit zavisi od konkretne strukture stabla i hardvera.
+
+### Python
+
+Kriva je praktično ravna za d≥3 (raspon 1.58–1.85×). Trošak pokretanja novih procesa i pickle serijalizacije dominira nad neravnomernošću zadataka — bez obzira na to koliko zadataka postoji, svaki mora da se serijalizuje pre slanja i deserijalizuje po povratku. Zbog toga vrednost `split_depth` nema praktičnog uticaja za Python multiprocessing.
+
+---
+
+## 5. Zaključak
+
+| Implementacija | Empirijski optimum | Heuristika (d=5) | Razlika |
+| -------------- | :----------------: | :--------------: | :-----: |
+| Rust           |       d=8 (4.27×)  |    d=5 (3.90×)   |  ~9.5%  |
+| Python         |       d=4 (1.85×)  |    d=5 (1.81×)   |  ~2.2%  |
+
+Heuristika `floor(log2(N*4))` je praktičan izbor: automatski se prilagođava broju jezgara, drži sekvencijalnu fazu u razumnim granicama i daje rezultate bliske empirijskom optimumu za obe implementacije.
